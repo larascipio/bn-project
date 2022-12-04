@@ -15,4 +15,31 @@ class BNReasoner:
         else:
             self.bn = net
 
-    # TODO: This is where your methods should go
+    def get_structure(self):
+        print(self.bn.draw_structure())
+
+    def pruning(self, variables, evidence):
+        self.variables = variables.union(evidence)
+        self.evidence = evidence 
+    
+        # Step 1: del leaf nodes (now it still deletes all nodes)
+        for v in self.bn.get_all_variables():
+            if v not in self.variables:
+                self.bn.del_var(v)
+
+        # Step 2: del outgoing edges
+        for node in self.evidence:
+            children = self.bn.get_children(node)
+            for c in children:
+                self.bn.del_edge((node, c))
+            
+            
+
+if __name__ == "__main__":
+    # Create test 
+    test_file = 'testing/lecture_example.BIFXML'
+    BN = BNReasoner(test_file)
+    # BN.get_structure()
+    variables = {'Slippery Road?', 'Wet Grass?'}
+    evidence = {'Rain?'}
+    BN.pruning(variables, evidence)
