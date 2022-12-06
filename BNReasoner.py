@@ -20,19 +20,29 @@ class BNReasoner:
 
     def pruning(self, variables, evidence):
         self.variables = variables.union(evidence)
-        self.evidence = evidence 
-    
-        # Step 1: del leaf nodes (now it still deletes all nodes)
-        for v in self.bn.get_all_variables():
-            if v not in self.variables:
-                self.bn.del_var(v)
+        self.evidence = evidence
+        self.perform_once = False
+        self.children = False 
 
-        # Step 2: del outgoing edges
-        for node in self.evidence:
-            children = self.bn.get_children(node)
-            for c in children:
-                self.bn.del_edge((node, c))
+        while True:
+            # Step 1: del leaf nodes 
+            for v in self.bn.get_all_variables():
+                if not self.bn.get_children(v) and v not in self.variables:
+                    self.children = True 
+                    self.bn.del_var(v)
+            if not self.children and self.perform_once:
+                break
             
+            self.children = False
+            self.perform_once = True 
+            # Step 2: del outgoing edges
+            for v in self.evidence:
+                children = self.bn.get_children(v)
+                for c in children:
+                    self.bn.del_edge((v, c))
+
+        self.get_structure()
+                
             
 
 if __name__ == "__main__":
