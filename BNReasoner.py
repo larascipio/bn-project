@@ -47,6 +47,18 @@ class BNReasoner:
                 break
         return self.pruned_bn
     
+    def find_all_paths(self, bn, start, path):
+        """
+        Finds all possible (undirected) paths between a start and end node, 
+        returns a list of paths.
+        """
+        path.append(start)
+        # Depth first recursive search 
+        for node in bn.get_children(start) + bn.get_parents(start):
+            if node not in path:
+                self.find_all_paths(bn, node, path.copy())
+        paths.append(path)
+        
     def is_d_blocked(self, path, evidence):
         """
         Checks for every triple in a path if it is active, and subsequently if the path is d-blocked.
@@ -73,18 +85,6 @@ class BNReasoner:
         
         # If no inactive triples are found: path is not d-blocked
         return False
-
-    def find_all_paths(self, bn, start, path):
-        """
-        Finds all possible (undirected) paths between a start and end node, 
-        returns a list of paths.
-        """
-        path.append(start)
-        # Depth first recursive search 
-        for node in bn.get_children(start) + bn.get_parents(start):
-            if node not in path:
-                self.find_all_paths(bn, node, path.copy())
-        paths.append(path)
 
     def is_d_separated(self, X, Y, evidence):
         """
@@ -121,9 +121,6 @@ class BNReasoner:
         print(f'{X} is not independent from {Y} given {evidence}')
         return False
         
-
-
-
 if __name__ == "__main__":
     # Create test 
     test_file = 'testing/lecture_example.BIFXML'
