@@ -15,6 +15,8 @@ class BNReasoner:
             self.bn.load_from_bifxml(net)
         else:
             self.bn = net
+        
+        self.paths = [[]]
 
     def get_structure(self, bn):
         return bn.draw_structure()
@@ -53,12 +55,12 @@ class BNReasoner:
         returns a list of paths.
         """
         path.append(start)
-        # Depth first recursive search 
+        # Depth-first recursive search 
         for node in bn.get_children(start) + bn.get_parents(start):
             if node not in path:
                 self.find_all_paths(bn, node, path.copy())
-        paths.append(path)
-        
+        self.paths.append(path)
+
     def is_d_blocked(self, path, evidence):
         """
         Checks for every triple in a path if it is active, and subsequently if the path is d-blocked.
@@ -95,7 +97,7 @@ class BNReasoner:
         
         # Select all paths that end with a node in Y
         selected_paths = []
-        for path in paths:
+        for path in self.paths:
             if not path:
                 continue
             if path[-1:][0] in Y:
@@ -120,21 +122,42 @@ class BNReasoner:
             return True
         print(f'{X} is not independent from {Y} given {evidence}')
         return False
+    
+    def sum_out(self, factor):
+        """
+        Computes the CPT in which a factor is summed-out.  
+        """
+        # Get table from input variable 
+        copy_cpt = copy.deepcopy(self.bn.get_cpt(factor))
+    
+        # Select all columns except the factor   
+        columns = list(copy_cpt.columns.values)
+        columns.remove(factor)
+        columns.remove('p')
         
+        # Create new df without the factor, add sum of factor to new df 
+        summed_out_cpt = copy_cpt.groupby(columns).sum().reset_index().drop(factor, axis=1)
+
+        return summed_out_cpt
+
+    
+
 if __name__ == "__main__":
     # Create test 
     test_file = 'testing/lecture_example.BIFXML'
     BN = BNReasoner(test_file)
     # BN.get_structure()
-    X = {'Slippery Road?', 'Wet Grass?'}
-    Y = {'Winter?'}
-    evidence = {}
-    # BN.pruning(variables, evidence)
-    paths = [[]]
-    BN.is_d_separated(X, Y, evidence)
-    BN.is_independent(X, Y, evidence)
 
-    # print(BN.get_edges())
-    # #visualize
-    # nx.draw(int_graph)
-    # plt.show()
+    # Variables for testing 
+    X = 'Sprinkler?'
+    Y = {'Sprinker?', 'Wet Grass?'}
+    evidence = {}
+
+    # Functions
+    # BN.pruning(variables, evidence)
+    # BN.is_d_separated(X, Y, evidence)
+    # BN.is_independent(X, Y, evidence)
+
+    BN.sum_out(X)
+
+    
