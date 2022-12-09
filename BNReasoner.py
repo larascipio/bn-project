@@ -123,13 +123,13 @@ class BNReasoner:
         print(f'{X} is not independent from {Y} given {evidence}')
         return False
     
-    def sum_out(self, factor):
+    def sum_out_factor(self, factor):
         """
         Computes the CPT in which a factor is summed-out.  
         """
         # Get table from input variable 
         copy_cpt = copy.deepcopy(self.bn.get_cpt(factor))
-    
+        print(copy_cpt)
         # Select all columns except the factor   
         columns = list(copy_cpt.columns.values)
         columns.remove(factor)
@@ -140,7 +140,20 @@ class BNReasoner:
 
         return summed_out_cpt
 
-    
+    def max_out(self, factor):
+        """
+        Computes the CPT in which a factor is maxed-out.  
+        """
+        pass
+
+    def get_factor_product(self, factor1, factor2):
+        """
+        Computes the multiplied factor h=fg, given two factors f and g. 
+        """
+        print(self.bn.get_cpt(factor1))
+        print(self.bn.get_cpt(factor2))
+        
+        
 
 if __name__ == "__main__":
     # Create test 
@@ -149,15 +162,17 @@ if __name__ == "__main__":
     # BN.get_structure()
 
     # Variables for testing 
-    X = 'Sprinkler?'
-    Y = {'Sprinker?', 'Wet Grass?'}
+    X = {'Sprinkler?'}
+    Y = {'Sprinkler?', 'Wet Grass?'}
     evidence = {}
+    factor_X = 'Sprinkler?'
+    factor_Y = 'Wet Grass?'
 
     # Functions
     # BN.pruning(variables, evidence)
     # BN.is_d_separated(X, Y, evidence)
     # BN.is_independent(X, Y, evidence)
-
-    BN.sum_out(X)
+    print(BN.sum_out_factor(factor_X))
+    # BN.get_factor_product(factor_X, factor_Y)
 
     
