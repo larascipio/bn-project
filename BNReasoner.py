@@ -179,14 +179,17 @@ class BNReasoner:
 
         return max_cpt
 
-    def f_multiplication(self, f, g) -> pd.DataFrame:
+    def f_multiplicatoin(self, f, g) -> pd.DataFrame:
         """
         Computes the multiplied factor h=fg, given two factors f and g.
-
         :input: f, g are factors (pd.DataFrame tables)
-        :return: h=fg, the multiplied factor h.
+        :return: h=fg, the multiplied factor
+
         """
-        return self.bn.get_cpt(f), self.bn.get_cpt(g)
+        return self.bn.get_cpt(factor1), self.bn.get_cpt(factor2)
+
+
+
 
 if __name__ == "__main__":
     # Create test
@@ -204,5 +207,5 @@ if __name__ == "__main__":
     # BN.is_d_separated(X, Y, evidence)
     # BN.is_independent(X, Y, evidence)
     # BN.marginalize(BN.bn, 'Sprinkler?')
-    # BN.max_out(BN.bn, 'Sprinkler?')
-    BN.f_multiplication(X, Y)
+    # print(BN.max_out(BN.bn, 'Sprinkler?'))
+    BN.f_multiplicatoin(factor_X, factor_Y)
