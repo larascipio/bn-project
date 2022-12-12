@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+
+<!DOCTYPE BIF [
+	<!ELEMENT BIF ( NETWORK )*>
+	      <!ATTLIST BIF VERSION CDATA #REQUIRED>
+	<!ELEMENT NETWORK ( NAME, ( PROPERTY | VARIABLE | DEFINITION )* )>
+	<!ELEMENT NAME (#PCDATA)>
+	<!ELEMENT VARIABLE ( NAME, ( OUTCOME |  PROPERTY )* ) >
+	      <!ATTLIST VARIABLE TYPE (nature|decision|utility) "nature">
+	<!ELEMENT OUTCOME (#PCDATA)>
+	<!ELEMENT DEFINITION ( FOR | GIVEN | TABLE | PROPERTY )* >
+	<!ELEMENT FOR (#PCDATA)>
+	<!ELEMENT GIVEN (#PCDATA)>
+	<!ELEMENT TABLE (#PCDATA)>
+	<!ELEMENT PROPERTY (#PCDATA)>
+]>
+
+<BIF VERSION="0.3">
+<NETWORK>
+    <NAME>Lecture Example2</NAME>
+
+    <!-- Variables-->
+    <VARIABLE TYPE="nature">
+        <NAME>PsyB</NAME>
+        <OUTCOME>True</OUTCOME>
+        <OUTCOME>False</OUTCOME>
+    </VARIABLE>
+    <VARIABLE TYPE="nature">
+        <NAME>AIB</NAME>
+        <OUTCOME>True</OUTCOME>
+        <OUTCOME>False</OUTCOME>
+    </VARIABLE>
+    <VARIABLE TYPE="nature">
+        <NAME>OB</NAME>
+        <OUTCOME>True</OUTCOME>
+        <OUTCOME>False</OUTCOME>
+    </VARIABLE>
+    <VARIABLE TYPE="nature">
+        <NAME>PsyM</NAME>
+        <OUTCOME>True</OUTCOME>
+        <OUTCOME>False</OUTCOME>
+    </VARIABLE>
+    <VARIABLE TYPE="nature">
+        <NAME>AIM</NAME>
+        <OUTCOME>True</OUTCOME>
+        <OUTCOME>False</OUTCOME>
+    </VARIABLE>
+    <VARIABLE TYPE="nature">
+        <NAME>OM</NAME>
+        <OUTCOME>True</OUTCOME>
+        <OUTCOME>False</OUTCOME>
+    </VARIABLE>
+    <VARIABLE TYPE="nature">
+        <NAME>PHD</NAME>
+        <OUTCOME>True</OUTCOME>
+        <OUTCOME>False</OUTCOME>
+    </VARIABLE>
+    <VARIABLE TYPE="nature">
+        <NAME>IFW</NAME>
+        <OUTCOME>True</OUTCOME>
+        <OUTCOME>False</OUTCOME>
+    </VARIABLE>
+    <VARIABLE TYPE="nature">
+        <NAME>OFW</NAME>
+        <OUTCOME>True</OUTCOME>
+        <OUTCOME>False</OUTCOME>
+    </VARIABLE>
+    <VARIABLE TYPE="nature">
+        <NAME>UE</NAME>
+        <OUTCOME>True</OUTCOME>
+        <OUTCOME>False</OUTCOME>
+    </VARIABLE>
+    <!-- PCTs -->
+    <DEFINITION>
+        <FOR>PsyB</FOR>
+        <TABLE>0.91 0.09</TABLE>
+    </DEFINITION>
+    <DEFINITION>
+        <FOR>AIB</FOR>
+        <TABLE>0.96 0.04</TABLE>
+    </DEFINITION>
+    <DEFINITION>
+        <FOR>OB</FOR>
+        <TABLE>0.13 0.87</TABLE>
+    </DEFINITION>
+    <DEFINITION>
+        <FOR>PsyM</FOR>
+        <GIVEN>PsyB</GIVEN>
+        <GIVEN>AIB</GIVEN>
+        <GIVEN>OB</GIVEN>
+        <TABLE>0 0 0.93 0.07 0.98 0.02 0 0 0.24 0.76 0 0 0 0 0 0</TABLE>
+    </DEFINITION>
+    <DEFINITION>
+        <FOR>AIM</FOR>
+        <GIVEN>PsyB</GIVEN>
+        <GIVEN>AIB</GIVEN>
+        <GIVEN>OB</GIVEN>
+        <TABLE>0 0 0.97 0.03 0.36 0.64 0 0 0.99 0.01 0 0 0 0 0 0</TABLE>
+    </DEFINITION>
+    <DEFINITION>
+        <FOR>OM</FOR>
+        <GIVEN>PsyB</GIVEN>
+        <GIVEN>AIB</GIVEN>
+        <GIVEN>OB</GIVEN>
+        <TABLE>0 0 0.1 0.9 0.66 0.34 0 0 0.77 0.23 0 0 0 0 0 0</TABLE>
+    </DEFINITION>
+    <DEFINITION>
+        <FOR>PHD</FOR>
+        <GIVEN>PsyM</GIVEN>
+        <GIVEN>AIM</GIVEN>
+        <GIVEN>OM</GIVEN>
+        <TABLE>0 0 0.94 0.06 0.93 0.07 0 0 0.95 0.05 0 0 0 0 0 0</TABLE>
+    </DEFINITION>
+    <DEFINITION>
+        <FOR>IFW</FOR>
+        <GIVEN>PHD</GIVEN>
+        <GIVEN>PsyM</GIVEN>
+        <GIVEN>AIM</GIVEN>
+        <GIVEN>OM</GIVEN>
+        <TABLE>0 0 0.16 0.78 0.11 0.82 0 0 0.21 0.74 0 0 0 0 0 0 0 0 0.01 0.05 0.01 0.06 0 0 0.01 0.04 0 0 0 0 0 0</TABLE>
+    </DEFINITION>
+    <DEFINITION>
+        <FOR>OFW</FOR>
+        <GIVEN>PHD</GIVEN>
+        <GIVEN>PsyM</GIVEN>
+        <GIVEN>AIM</GIVEN>
+        <GIVEN>OM</GIVEN>
+        <TABLE>0 0 0.88 0.12 0.91 0.09 0 0 0.85 0.15 0 0 0 0 0 0 0 0 0.99 0.01 0.99 0.01 0 0 0.99 0.01 0 0 0 0 0 0</TABLE>
+    </DEFINITION>
+    <DEFINITION>
+        <FOR>UE</FOR>
+        <GIVEN>PHD</GIVEN>
+        <GIVEN>PsyM</GIVEN>
+        <GIVEN>AIM</GIVEN>
+        <GIVEN>OM</GIVEN>
+        <TABLE>0 0 0.96 0.04 0.98 0.02 0 0 0.94 0.06 0 0 0 0 0 0 0 0 0.99 0.01 0.99 0.01 0 0 0.99 0.01 0 0 0 0 0 0</TABLE>
+    </DEFINITION>
+</NETWORK>
+</BIF>
