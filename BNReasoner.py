@@ -2,6 +2,7 @@ from typing import Union
 from BayesNet import BayesNet
 import copy
 import pandas as pd
+from itertools import combinations
 
 
 class BNReasoner:
@@ -141,7 +142,7 @@ class BNReasoner:
         :return: a marginalized CPT
         """
 
-        # Get copy from input factor
+        # Get copy from input cpt
         copy_cpt = copy.deepcopy(factor.get_cpt(X))
 
         # Select all columns except the factor
@@ -179,17 +180,92 @@ class BNReasoner:
 
         return max_cpt
 
-    def f_multiplicatoin(self, f, g) -> pd.DataFrame:
+    def f_multiplication(self, f, g) -> pd.DataFrame:
         """
         Computes the multiplied factor h=fg, given two factors f and g.
-        :input: f, g are factors (pd.DataFrame tables)
-        :return: h=fg, the multiplied factor
 
+        :input: f, g are factors (pd.DataFrame)
+        :return: h=fg, a cpt table
         """
-        return self.bn.get_cpt(factor1), self.bn.get_cpt(factor2)
+        # Get all variables in both factors
+        Z = list(set(f.columns).union(set(g.columns)))
+        # Get the overlap over variables
+        overlap = list(set(f.columns).intersection(set(g.columns)))
+        if 'p' in overlap:
+            overlap.remove('p')
+            Z.remove('p')
 
+        h_Z = pd.DataFrame(columns=Z)
 
+        # For every row of each factor
+        for i in range(0, f.shape[0]):
+            for j in range(0, g.shape[0]):
 
+                # Check if rows are the same
+                if f[overlap].iloc[i].tolist() == g[overlap].iloc[j].tolist():
+
+                    # Create new table of variable instances
+                    new = {}
+
+                    for col in Z:
+                        # Determine the variable instances
+                        if col in list(f.columns.values):
+                            new[col] = f[col].iloc[i]
+                        else:
+                            new[col] = g[col].iloc[j]
+
+                    # Multiply the factors
+                    new["p"] = f["p"].iloc[i] * g["p"].iloc[j]
+                    h_Z = h_Z.append(new, ignore_index=True)
+        return h_Z
+
+    def min_degree(self):
+        """
+        Queue the variable in the interaction graph for ordering
+        """
+        # Create interaction graph
+        int_graph = self.bn.get_interaction_graph()
+        degree = dict((int_graph.degree()))
+        # Sort dict by value (amount of degrees)
+        degree = dict(sorted(degree.items(), key=lambda x:x[1]))
+
+        # Order of elimination of X
+        ordering = []
+
+        for key in degree:
+            # Check neighbors
+            neighbors = int_graph.neighbors(key)
+            #int_graph.edges()
+
+            # # Connect neighbor nodes to each other
+            neighbor_edges = combinations(neighbors, 2)
+
+            for edge in neighbor_edges:
+                if int_graph.has_edge(edge[0], edge[1]) == False:
+                    int_graph.add_edge(edge[0], edge[1])
+
+            # Remove node from interaction graph
+            print("before\n")
+            print(int_graph.edges())
+            int_graph.remove_node(key)
+            print("after\n")
+            print(int_graph.edges())
+
+            # Append to ordering
+            ordering.append(key[0])
+        return ordering
+
+    def min_fill(self):
+        pass
+
+    def ordering(self, set_of_Vars):
+        """
+        (Hint: you get the interaction graph ”for free” from the BayesNet class.))
+
+        :set_of_Vars: A set of variables X in the BN
+        :returns a list of a good ordering for the elimination of X:
+        """
+        return
 
 if __name__ == "__main__":
     # Create test
@@ -198,9 +274,13 @@ if __name__ == "__main__":
     # BN.get_structure()
 
     # Variables for testing
-    X = {'Sprinkler?'}
-    Y = {'Sprinkler?', 'Wet Grass?'}
+    X = {'Winter?'}
+    Y = {'Winter?', 'Rain?'}
     evidence = {}
+    f = BN.bn.get_cpt('Winter?')
+    g = BN.bn.get_cpt('Rain?')
+
+
 
     # Functions
     # BN.pruning(variables, evidence)
@@ -208,4 +288,5 @@ if __name__ == "__main__":
     # BN.is_independent(X, Y, evidence)
     # BN.marginalize(BN.bn, 'Sprinkler?')
     # print(BN.max_out(BN.bn, 'Sprinkler?'))
-    BN.f_multiplicatoin(factor_X, factor_Y)
+    # BN.f_multiplication(f, g)
+    print(BN.min_degree())
