@@ -219,13 +219,23 @@ class BNReasoner:
                     h_Z = h_Z.append(new, ignore_index=True)
         return h_Z
 
-    def min_degree(self):
+    def min_degree(self, vars:str):
         """
-        Queue the variable in the interaction graph for ordering
+        :vars: list of variables of graph which needs sorting
+        :return: list of sorted variables
+
+        Queue the variable in the graph with the smallest degree for ordering
         """
+
         # Create interaction graph
         int_graph = self.bn.get_interaction_graph()
-        degree = dict((int_graph.degree()))
+        degree_ = dict((int_graph.degree()))
+
+        # # Get the intersection of vars and nodes in degree
+        degree = {}
+        for i in list(set(degree_.keys()) & set(vars)):
+            degree[i] = degree_[i]
+
         # Sort dict by value (amount of degrees)
         degree = dict(sorted(degree.items(), key=lambda x:x[1]))
 
@@ -235,37 +245,98 @@ class BNReasoner:
         for key in degree:
             # Check neighbors
             neighbors = int_graph.neighbors(key)
-            #int_graph.edges()
 
-            # # Connect neighbor nodes to each other
+            # Connect neighbor nodes to each other
             neighbor_edges = combinations(neighbors, 2)
 
+            # Add these new connections to the list of edges
             for edge in neighbor_edges:
                 if int_graph.has_edge(edge[0], edge[1]) == False:
                     int_graph.add_edge(edge[0], edge[1])
 
-            # Remove node from interaction graph
-            print("before\n")
-            print(int_graph.edges())
+            # Remove the node from graph
             int_graph.remove_node(key)
-            print("after\n")
-            print(int_graph.edges())
+            ordering.append(key)
 
-            # Append to ordering
-            ordering.append(key[0])
         return ordering
 
-    def min_fill(self):
-        pass
+    def the_smallest(self, vars, graph):
+        """
+        :vars: list of variables
+        :graph: interaction graph to check on
+        :return: dictionary of sorted nodes (s-b) and dictionary of graphs
+        """
+        n_graph = graph
+        new_edges = {}
+        saved_graph = {}
+
+        for var in vars:
+            new_edges[var] = 0
+            neighbors = n_graph.neighbors(var)
+            # Connect neighbor nodes to each other
+            neighbor_edges = combinations(neighbors, 2)
+            # Add these new connections to the list of edges
+            for edge in neighbor_edges:
+                if n_graph.has_edge(edge[0], edge[1]) == False:
+                    n_graph.add_edge(edge[0], edge[1])
+                    new_edges[var] += 1
+            saved_graph[var] = n_graph
+            n_graph = graph
+
+        smallest = dict(sorted(new_edges.items(), key=lambda x:x[1]))
+        return smallest, saved_graph
+
+    def min_fill(self, vars):
+        """
+        Queue variable which deletion would add the fewest new edges to
+        the graph
+
+        :vars: list of unsorted variables
+        :retun: list of sorted nodes for elimination
+        """
+        # Create interaction graph
+        int_graph = self.bn.get_interaction_graph()
+        degree_ = dict((int_graph.degree()))
+
+        # Get the intersection of vars and nodes in degree
+        degree = {}
+        for i in list(set(degree_.keys()) & set(vars)):
+            degree[i] = degree_[i]
+
+        # Order of elimination of X
+        ordering = []
+
+        var_list = list(degree.keys())
+
+        while len(var_list) > 0:
+            # Get the node and corresponding graph which creates the least amount of new edges
+            node, graph = self.the_smallest(var_list, int_graph)
+
+            # Update graph and variable list
+            int_graph = graph[list(node.keys())[0]]
+            ordering.append(list(node.keys())[0])
+
+            # Delete node from variable list
+            var_list.remove(list(node.keys())[0])
+
+        return ordering
 
     def ordering(self, set_of_Vars):
         """
         (Hint: you get the interaction graph ”for free” from the BayesNet class.))
 
         :set_of_Vars: A set of variables X in the BN
-        :returns a list of a good ordering for the elimination of X:
+        :returns: two lists of a good ordering for the elimination of X
         """
-        return
+        return self.min_degree(set_of_Vars), self.min_fill(set_of_Vars)
+
+    def marg_dist(self):
+        """
+        Given query variables Q and possibly empty evidence e, compute the
+        marginal distribution P(Q|e). Note that Q is a subset of the variables
+        in the Bayesian network X with Q ⊂ X but can also be Q = X. (2.5pts)
+        """
+        pass
 
 if __name__ == "__main__":
     # Create test
@@ -280,8 +351,6 @@ if __name__ == "__main__":
     f = BN.bn.get_cpt('Winter?')
     g = BN.bn.get_cpt('Rain?')
 
-
-
     # Functions
     # BN.pruning(variables, evidence)
     # BN.is_d_separated(X, Y, evidence)
@@ -289,4 +358,6 @@ if __name__ == "__main__":
     # BN.marginalize(BN.bn, 'Sprinkler?')
     # print(BN.max_out(BN.bn, 'Sprinkler?'))
     # BN.f_multiplication(f, g)
-    print(BN.min_degree())
+    # BN.min_degree(['Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'])
+    # BN.min_fill(['Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'])
+    print(BN.ordering(['Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?']))
