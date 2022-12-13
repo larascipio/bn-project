@@ -363,6 +363,9 @@ class BNReasoner:
         #self.elimination(joint_marg, heuristic)
         return
 
+    def map(self, Q, e):
+        return
+
 if __name__ == "__main__":
     # Create test
     test_file = 'testing/lecture_example.BIFXML'
