@@ -262,7 +262,7 @@ class BNReasoner:
 
     def the_smallest(self, vars, graph):
         """
-        :vars: list of variables
+        :vars: set of variables
         :graph: interaction graph to check on
         :return: dictionary of sorted nodes (s-b) and dictionary of graphs
         """
@@ -291,7 +291,7 @@ class BNReasoner:
         Queue variable which deletion would add the fewest new edges to
         the graph
 
-        :vars: list of unsorted variables
+        :vars: set of unsorted variables
         :retun: list of sorted nodes for elimination
         """
         # Create interaction graph
@@ -306,6 +306,7 @@ class BNReasoner:
         # Order of elimination of X
         ordering = []
 
+        # List of variables to loop through
         var_list = list(degree.keys())
 
         while len(var_list) > 0:
@@ -330,13 +331,37 @@ class BNReasoner:
         """
         return self.min_degree(set_of_Vars), self.min_fill(set_of_Vars)
 
-    def marg_dist(self):
+    def marg_dist(self, Q, e, heuristic):
         """
+        :Q: Query Variables, a list - ['C', 'D']
+        :e: A dict of instances of variables - {'A': False}
+        :heuristic: ordering of the elimination
+        :returns: the dict
+
         Given query variables Q and possibly empty evidence e, compute the
         marginal distribution P(Q|e). Note that Q is a subset of the variables
         in the Bayesian network X with Q ⊂ X but can also be Q = X. (2.5pts)
         """
-        pass
+        # Create a copy of the network
+        self.marge_bn = copy.deepcopy(self.bn)
+
+        # Loop through the evidence and adjust its table
+        for var, inst in e.items():
+            table = self.marge_bn.get_cpt(var)
+            table = table[table[var] == inst]
+            self.marge_bn.update_cpt(var, table)
+
+            # Also adjust the tables of the children
+            children = self.marge_bn.get_children(var)
+            for child in children:
+                table_c = self.marge_bn.get_cpt(child)
+                table_c = table_c[table_c[var] == inst]
+                self.marge_bn.update_cpt(child, table_c)
+
+        joint_marg = set(Q) | set(list(e.keys()))
+
+        #self.elimination(joint_marg, heuristic)
+        return
 
 if __name__ == "__main__":
     # Create test
@@ -358,6 +383,7 @@ if __name__ == "__main__":
     # BN.marginalize(BN.bn, 'Sprinkler?')
     # print(BN.max_out(BN.bn, 'Sprinkler?'))
     # BN.f_multiplication(f, g)
-    # BN.min_degree(['Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'])
-    # BN.min_fill(['Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'])
-    print(BN.ordering(['Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?']))
+    # BN.min_degree({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
+    # BN.min_fill({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
+    # BN.ordering({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
+    print(BN.marg_dist(['Slippery Road?'], {'Winter?': True, 'Rain?': False}, "heuristic"))
