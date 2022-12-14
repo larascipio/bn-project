@@ -4,7 +4,6 @@ import copy
 import pandas as pd
 from itertools import combinations
 
-
 class BNReasoner:
     def __init__(self, net: Union[str, BayesNet]):
         """
@@ -389,4 +388,4 @@ if __name__ == "__main__":
     # BN.min_degree({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # BN.min_fill({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # BN.ordering({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
-    print(BN.marg_dist(['Slippery Road?'], {'Winter?': True, 'Rain?': False}, "heuristic"))
+    # BN.marg_dist(['Slippery Road?'], {'Winter?': True, 'Rain?': False}, "heuristic")
