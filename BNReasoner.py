@@ -140,19 +140,44 @@ class BNReasoner:
         :X: variable to sum out
         :return: a marginalized CPT
         """
-
         # Get copy from input cpt
-        copy_cpt = copy.deepcopy(factor.get_cpt(X))
+        # copy_cpt = copy.deepcopy(factor.get_cpt(X))
+        copy_cpt = copy.deepcopy(factor)
 
-        # Select all columns except the factor
+        # Keep track of columns for later use 
         columns = list(copy_cpt.columns.values)
         columns.remove(X)
         columns.remove('p')
 
-        # Create new df without the factor, add sum of factor to new df
-        summed_out_cpt = copy_cpt.groupby(columns).sum().reset_index().drop(X, axis=1)
+        # Keep true and false values while removing the factor X
+        true_values = copy_cpt[(copy_cpt[X] == True)].drop(X, axis=1)
+        false_values = copy_cpt[(copy_cpt[X] == False)].drop(X, axis=1)
+
+        # Take the sum of True and False values according to the other variables in the cpt
+        summed_out_cpt = pd.concat([true_values, false_values]).groupby(columns)['p'].sum().reset_index()
 
         return summed_out_cpt
+    # def marginalize(self, factor, X) -> pd.DataFrame:
+    #     """
+    #     Computes the CPT from factor in which X is summed-out.
+
+    #     :factor: factor from which to sum X out
+    #     :X: variable to sum out
+    #     :return: a marginalized CPT
+    #     """
+
+    #     # Get copy from input cpt
+    #     copy_cpt = copy.deepcopy(factor.get_cpt(X))
+
+    #     # Select all columns except the factor
+    #     columns = list(copy_cpt.columns.values)
+    #     columns.remove(X)
+    #     columns.remove('p')
+
+    #     # Create new df without the factor, add sum of factor to new df
+    #     summed_out_cpt = copy_cpt.groupby(columns).sum().reset_index().drop(X, axis=1)
+
+    #     return summed_out_cpt
 
     def max_out(self, factor, X) -> pd.DataFrame:
         """
@@ -258,6 +283,56 @@ class BNReasoner:
             ordering.append(key)
 
         return ordering
+    
+    def elimination(self, set_of_Vars, *heuristic):
+        """
+        :set_of_Vars: A set of variables X in the BN
+        :returns a marginalized cpt in which a set of variables is eliminated:
+        """
+        # Copy to change current network 
+        self.elimination_bn = copy.deepcopy(self.bn)
+
+        # Apply ordering is applicable 
+        if heuristic:
+            ordered_vars = ordering(set_of_Vars, heuristic)
+        else:
+            ordered_vars = list(set_of_Vars)
+        
+        old_marg_cpt = None
+
+        # Eliminate every variable 
+        for var in ordered_vars:
+
+            # Check if variable is not the first in the loop 
+            if old_marg_cpt is pd.DataFrame():
+                list_factors = [old_marg_cpt]
+            # Start with first node when variable is the first in the loop 
+            else:
+                parent_cpt = copy.deepcopy(self.elimination_bn.get_cpt(var))
+                list_factors = [parent_cpt]
+        
+            # Combine all children-nodes from the variable
+            for child in self.bn.get_children(var):
+                child_cpt = copy.deepcopy(self.elimination_bn.get_cpt(child))
+                list_factors.append(child_cpt)
+
+            # Take first node to multiply 
+            new_cpt = list_factors.pop()
+
+            # Multiply all nodes with each other  
+            while len(list_factors) > 0:
+                new_cpt = self.f_multiplication(new_cpt, list_factors.pop())
+
+            # Sum out the newly factor 
+            marg_cpt = self.marginalize(new_cpt, var)
+
+            # Update variable cpt with new marginalized cpt 
+            self.elimination_bn.update_cpt(var, marg_cpt)
+            
+            # Keep marginalized cpt for next multiplication  
+            old_marg_cpt = marg_cpt
+        
+        return old_marg_cpt
 
     def the_smallest(self, vars, graph):
         """
@@ -388,4 +463,6 @@ if __name__ == "__main__":
     # BN.min_degree({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # BN.min_fill({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # BN.ordering({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
+    # set_of_Vars = {'Slippery Road?', 'Rain?'}
+    # BN.elimination(set_of_Vars)
     # BN.marg_dist(['Slippery Road?'], {'Winter?': True, 'Rain?': False}, "heuristic")
