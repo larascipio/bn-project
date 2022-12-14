@@ -1,6 +1,8 @@
 from typing import Union
 from BayesNet import BayesNet
 import copy
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 import pandas as pd
 from itertools import combinations
 
@@ -292,17 +294,19 @@ class BNReasoner:
         # Copy to change current network 
         self.elimination_bn = copy.deepcopy(self.bn)
 
-        # Apply ordering is applicable 
-        if heuristic:
-            ordered_vars = ordering(set_of_Vars, heuristic)
-        else:
-            ordered_vars = list(set_of_Vars)
+        # # Apply ordering is applicable 
+        # if heuristic:
+        #     ordered_vars = self.ordering(set_of_Vars, heuristic)
+        # else:
+        #     ordered_vars = list(set_of_Vars)
+
+        ordered_vars = list(set_of_Vars)
         
         old_marg_cpt = None
 
         # Eliminate every variable 
         for var in ordered_vars:
-
+            print(var)
             # Check if variable is not the first in the loop 
             if old_marg_cpt is pd.DataFrame():
                 list_factors = [old_marg_cpt]
@@ -331,7 +335,7 @@ class BNReasoner:
             
             # Keep marginalized cpt for next multiplication  
             old_marg_cpt = marg_cpt
-        
+            print(old_marg_cpt)
         return old_marg_cpt
 
     def the_smallest(self, vars, graph):
@@ -396,14 +400,19 @@ class BNReasoner:
 
         return ordering
 
-    def ordering(self, set_of_Vars):
+    def ordering(self, set_of_Vars, heuristic):
         """
         (Hint: you get the interaction graph ”for free” from the BayesNet class.))
 
         :set_of_Vars: A set of variables X in the BN
         :returns: two lists of a good ordering for the elimination of X
         """
-        return self.min_degree(set_of_Vars), self.min_fill(set_of_Vars)
+        if heuristic == 'min_degree':
+            return self.min_degree(set_of_Vars)
+            
+        if heuristic == 'self.min_fill':
+            return self.min_fill(set_of_Vars)
+
 
     def marg_dist(self, Q, e, heuristic):
         """
@@ -432,9 +441,24 @@ class BNReasoner:
                 table_c = table_c[table_c[var] == inst]
                 self.marge_bn.update_cpt(child, table_c)
 
-        joint_marg = set(Q) | set(list(e.keys()))
+        # joint_marg = set(Q) | set(list(e.keys()))
+        irrelevant_factors = set(self.marge_bn.get_all_variables())
+        # Remove element that should not be eleminated (Q)
+        for i in Q:
+            irrelevant_factors.remove(i)
 
-        #self.elimination(joint_marg, heuristic)
+        # self.elimination(joint_marg, heuristic)
+
+        # Pick heuristic 
+        heuristic = 'self.min_fill'
+        
+        # Eliminate irrelevant factors of the query 
+        marginalized_cpt = self.elimination(irrelevant_factors, heuristic)
+
+        # Calculate true and false values of Q
+        prob_true = self.marged_bn.get_cpt['p' == True].div(evidence_factor)
+        prob_false = self.marged_bn.get_cpt['p' == False].div(evidence_factor)
+        
         return
 
     def map(self, Q, e):
@@ -466,3 +490,5 @@ if __name__ == "__main__":
     # set_of_Vars = {'Slippery Road?', 'Rain?'}
     # BN.elimination(set_of_Vars)
     # BN.marg_dist(['Slippery Road?'], {'Winter?': True, 'Rain?': False}, "heuristic")
+    BN.marg_dist(['Rain?'], {'Winter?': True}, "heuristic")
+

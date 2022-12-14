@@ -291,7 +291,7 @@ class BNReasoner:
 
         # Eliminate every variable 
         for var in ordered_vars:
-
+            print(var)
             # Check if variable is not the first in the loop 
             if old_marg_cpt is pd.DataFrame():
                 list_factors = [old_marg_cpt]
@@ -320,6 +320,7 @@ class BNReasoner:
             
             # Keep marginalized cpt for next multiplication  
             old_marg_cpt = marg_cpt
+            print(old_marg_cpt)
         
         return old_marg_cpt
 
