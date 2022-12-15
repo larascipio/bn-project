@@ -159,28 +159,28 @@ class BNReasoner:
         summed_out_cpt = pd.concat([true_values, false_values]).groupby(columns)['p'].sum().reset_index()
 
         return summed_out_cpt
-
-    def marginalize2(self, factor, X) -> pd.DataFrame:
-        """
-        Computes the CPT from factor in which X is summed-out.
-
-        :factor: factor from which to sum X out
-        :X: variable to sum out
-        :return: a marginalized CPT
-        """
-
-        # Get copy from input cpt
-        copy_cpt = copy.deepcopy(factor)
-
-        # Select all columns except the factor
-        columns = list(copy_cpt.columns.values)
-        columns.remove(X)
-        columns.remove('p')
-
-        # Create new df without the factor, add sum of factor to new df
-        summed_out_cpt = copy_cpt.groupby(columns).sum().reset_index().drop(X, axis=1)
-
-        return summed_out_cpt
+    #
+    # def marginalize2(self, factor, X) -> pd.DataFrame:
+    #     """
+    #     Computes the CPT from factor in which X is summed-out.
+    #
+    #     :factor: factor from which to sum X out
+    #     :X: variable to sum out
+    #     :return: a marginalized CPT
+    #     """
+    #
+    #     # Get copy from input cpt
+    #     copy_cpt = copy.deepcopy(factor)
+    #
+    #     # Select all columns except the factor
+    #     columns = list(copy_cpt.columns.values)
+    #     columns.remove(X)
+    #     columns.remove('p')
+    #
+    #     # Create new df without the factor, add sum of factor to new df
+    #     summed_out_cpt = copy_cpt.groupby(columns).sum().reset_index().drop(X, axis=1)
+    #
+    #     return summed_out_cpt
 
     def max_out(self, factor, X) -> pd.DataFrame:
         """
@@ -328,7 +328,7 @@ class BNReasoner:
                 new_cpt = self.f_multiplication(new_cpt, list_factors.pop())
 
             # Sum out the newly factor
-            marg_cpt = self.marginalize(new_cpt, var)
+            marg_cpt = self.marginalize1(new_cpt, var)
 
             # Update variable cpt with new marginalized cpt
             self.elimination_bn.update_cpt(var, marg_cpt)
@@ -490,14 +490,13 @@ if __name__ == "__main__":
     # BN.pruning(variables, evidence)
     # BN.is_d_separated(X, Y, evidence)
     # BN.is_independent(X, Y, evidence)
-    print(BN.marginalize1(f, 'Winter?'))
-    print(BN.marginalize2(f, 'Winter?'))
+    # print(BN.marginalize1(f, 'Winter?'))
     # print(BN.max_out(BN.bn, 'Sprinkler?'))
     # BN.f_multiplication(f, g)
     # BN.min_degree({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # BN.min_fill({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # BN.ordering({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # set_of_Vars = {'Slippery Road?', 'Rain?'}
-    # BN.elimination(set_of_Vars)
+    print(BN.elimination(Y))
     # BN.marg_dist(['Slippery Road?'], {'Winter?': True, 'Rain?': False}, "heuristic")
     # BN.marg_dist(['Rain?'], {'Winter?': True}, "heuristic")
