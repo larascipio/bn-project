@@ -306,7 +306,6 @@ class BNReasoner:
 
         # Eliminate every variable 
         for var in ordered_vars:
-            print(var)
             # Check if variable is not the first in the loop 
             if old_marg_cpt is pd.DataFrame():
                 list_factors = [old_marg_cpt]
@@ -335,7 +334,7 @@ class BNReasoner:
             
             # Keep marginalized cpt for next multiplication  
             old_marg_cpt = marg_cpt
-            print(old_marg_cpt)
+
         return old_marg_cpt
 
     def the_smallest(self, vars, graph):
@@ -442,8 +441,8 @@ class BNReasoner:
                 self.marge_bn.update_cpt(child, table_c)
 
         # joint_marg = set(Q) | set(list(e.keys()))
+        # Remove elements that should not be eleminated (Q)
         irrelevant_factors = set(self.marge_bn.get_all_variables())
-        # Remove element that should not be eleminated (Q)
         for i in Q:
             irrelevant_factors.remove(i)
 
@@ -453,11 +452,13 @@ class BNReasoner:
         heuristic = 'self.min_fill'
         
         # Eliminate irrelevant factors of the query 
-        marginalized_cpt = self.elimination(irrelevant_factors, heuristic)
-
+        # marginalized_cpt = self.elimination(irrelevant_factors, heuristic)
+        marginalized_cpt = self.elimination(irrelevant_factors)
+        print(marginalized_cpt)
         # Calculate true and false values of Q
-        prob_true = self.marged_bn.get_cpt['p' == True].div(evidence_factor)
-        prob_false = self.marged_bn.get_cpt['p' == False].div(evidence_factor)
+        cpt = marginalized_cpt.groupby(Q)['p'].sum()
+        print(cpt)
+        prob_false = self.marge_bn.get_cpt['p' == False].div(evidence_factor)
         
         return
 
