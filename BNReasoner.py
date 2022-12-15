@@ -22,7 +22,7 @@ class BNReasoner:
         self.paths = [[]]
 
     def get_structure(self, bn):
-        return bn.draw_structure()
+        return self.bn.draw_structure()
 
     def get_edges(self, bn):
         return bn.structure.edges
@@ -134,7 +134,7 @@ class BNReasoner:
         print(f'{X} is not independent from {Y} given {evidence}')
         return False
 
-    def marginalize(self, factor, X) -> pd.DataFrame:
+    def marginalize1(self, factor, X) -> pd.DataFrame:
         """
         Computes the CPT from factor in which X is summed-out.
 
@@ -146,7 +146,7 @@ class BNReasoner:
         # copy_cpt = copy.deepcopy(factor.get_cpt(X))
         copy_cpt = copy.deepcopy(factor)
 
-        # Keep track of columns for later use 
+        # Keep track of columns for later use
         columns = list(copy_cpt.columns.values)
         columns.remove(X)
         columns.remove('p')
@@ -159,27 +159,28 @@ class BNReasoner:
         summed_out_cpt = pd.concat([true_values, false_values]).groupby(columns)['p'].sum().reset_index()
 
         return summed_out_cpt
-    # def marginalize(self, factor, X) -> pd.DataFrame:
-    #     """
-    #     Computes the CPT from factor in which X is summed-out.
 
-    #     :factor: factor from which to sum X out
-    #     :X: variable to sum out
-    #     :return: a marginalized CPT
-    #     """
+    def marginalize2(self, factor, X) -> pd.DataFrame:
+        """
+        Computes the CPT from factor in which X is summed-out.
 
-    #     # Get copy from input cpt
-    #     copy_cpt = copy.deepcopy(factor.get_cpt(X))
+        :factor: factor from which to sum X out
+        :X: variable to sum out
+        :return: a marginalized CPT
+        """
 
-    #     # Select all columns except the factor
-    #     columns = list(copy_cpt.columns.values)
-    #     columns.remove(X)
-    #     columns.remove('p')
+        # Get copy from input cpt
+        copy_cpt = copy.deepcopy(factor)
 
-    #     # Create new df without the factor, add sum of factor to new df
-    #     summed_out_cpt = copy_cpt.groupby(columns).sum().reset_index().drop(X, axis=1)
+        # Select all columns except the factor
+        columns = list(copy_cpt.columns.values)
+        columns.remove(X)
+        columns.remove('p')
 
-    #     return summed_out_cpt
+        # Create new df without the factor, add sum of factor to new df
+        summed_out_cpt = copy_cpt.groupby(columns).sum().reset_index().drop(X, axis=1)
+
+        return summed_out_cpt
 
     def max_out(self, factor, X) -> pd.DataFrame:
         """
@@ -285,54 +286,54 @@ class BNReasoner:
             ordering.append(key)
 
         return ordering
-    
+
     def elimination(self, set_of_Vars, *heuristic):
         """
         :set_of_Vars: A set of variables X in the BN
         :returns a marginalized cpt in which a set of variables is eliminated:
         """
-        # Copy to change current network 
+        # Copy to change current network
         self.elimination_bn = copy.deepcopy(self.bn)
 
-        # # Apply ordering is applicable 
+        # # Apply ordering is applicable
         # if heuristic:
         #     ordered_vars = self.ordering(set_of_Vars, heuristic)
         # else:
         #     ordered_vars = list(set_of_Vars)
 
         ordered_vars = list(set_of_Vars)
-        
+
         old_marg_cpt = None
 
-        # Eliminate every variable 
+        # Eliminate every variable
         for var in ordered_vars:
-            # Check if variable is not the first in the loop 
+            # Check if variable is not the first in the loop
             if old_marg_cpt is pd.DataFrame():
                 list_factors = [old_marg_cpt]
-            # Start with first node when variable is the first in the loop 
+            # Start with first node when variable is the first in the loop
             else:
                 parent_cpt = copy.deepcopy(self.elimination_bn.get_cpt(var))
                 list_factors = [parent_cpt]
-        
+
             # Combine all children-nodes from the variable
             for child in self.bn.get_children(var):
                 child_cpt = copy.deepcopy(self.elimination_bn.get_cpt(child))
                 list_factors.append(child_cpt)
 
-            # Take first node to multiply 
+            # Take first node to multiply
             new_cpt = list_factors.pop()
 
-            # Multiply all nodes with each other  
+            # Multiply all nodes with each other
             while len(list_factors) > 0:
                 new_cpt = self.f_multiplication(new_cpt, list_factors.pop())
 
-            # Sum out the newly factor 
+            # Sum out the newly factor
             marg_cpt = self.marginalize(new_cpt, var)
 
-            # Update variable cpt with new marginalized cpt 
+            # Update variable cpt with new marginalized cpt
             self.elimination_bn.update_cpt(var, marg_cpt)
-            
-            # Keep marginalized cpt for next multiplication  
+
+            # Keep marginalized cpt for next multiplication
             old_marg_cpt = marg_cpt
 
         return old_marg_cpt
@@ -408,10 +409,9 @@ class BNReasoner:
         """
         if heuristic == 'min_degree':
             return self.min_degree(set_of_Vars)
-            
+
         if heuristic == 'self.min_fill':
             return self.min_fill(set_of_Vars)
-
 
     def marg_dist(self, Q, e, heuristic):
         """
@@ -441,6 +441,7 @@ class BNReasoner:
                 self.marge_bn.update_cpt(child, table_c)
 
         # joint_marg = set(Q) | set(list(e.keys()))
+
         # Remove elements that should not be eleminated (Q)
         irrelevant_factors = set(self.marge_bn.get_all_variables())
         for i in Q:
@@ -448,10 +449,10 @@ class BNReasoner:
 
         # self.elimination(joint_marg, heuristic)
 
-        # Pick heuristic 
+        # Pick heuristic
         heuristic = 'self.min_fill'
-        
-        # Eliminate irrelevant factors of the query 
+
+        # Eliminate irrelevant factors of the query
         # marginalized_cpt = self.elimination(irrelevant_factors, heuristic)
         marginalized_cpt = self.elimination(irrelevant_factors)
         print(marginalized_cpt)
@@ -459,7 +460,7 @@ class BNReasoner:
         cpt = marginalized_cpt.groupby(Q)['p'].sum()
         print(cpt)
         prob_false = self.marge_bn.get_cpt['p' == False].div(evidence_factor)
-        
+
         return
 
     def map(self, Q, e):
@@ -468,21 +469,29 @@ class BNReasoner:
 if __name__ == "__main__":
     # Create test
     test_file = 'testing/lecture_example.BIFXML'
+    t = 'use_case_strict.xml'
+    t2 = 'use_case.xml'
+    BN_test = BNReasoner(t)
+    BN_test2 = BNReasoner(t2)
     BN = BNReasoner(test_file)
-    # BN.get_structure()
+    # BN_test.get_structure()
+    # BN_test2.bn.draw_structure()
+
+    # BN.bn.draw_structure()
 
     # Variables for testing
     X = {'Winter?'}
     Y = {'Winter?', 'Rain?'}
     evidence = {}
-    f = BN.bn.get_cpt('Winter?')
+    f = BN.bn.get_cpt('Sprinkler?')
     g = BN.bn.get_cpt('Rain?')
 
     # Functions
     # BN.pruning(variables, evidence)
     # BN.is_d_separated(X, Y, evidence)
     # BN.is_independent(X, Y, evidence)
-    # BN.marginalize(BN.bn, 'Sprinkler?')
+    print(BN.marginalize1(f, 'Winter?'))
+    print(BN.marginalize2(f, 'Winter?'))
     # print(BN.max_out(BN.bn, 'Sprinkler?'))
     # BN.f_multiplication(f, g)
     # BN.min_degree({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
@@ -491,5 +500,4 @@ if __name__ == "__main__":
     # set_of_Vars = {'Slippery Road?', 'Rain?'}
     # BN.elimination(set_of_Vars)
     # BN.marg_dist(['Slippery Road?'], {'Winter?': True, 'Rain?': False}, "heuristic")
-    BN.marg_dist(['Rain?'], {'Winter?': True}, "heuristic")
-
+    # BN.marg_dist(['Rain?'], {'Winter?': True}, "heuristic")
