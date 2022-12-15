@@ -144,20 +144,21 @@ class BNReasoner:
         """
         # Get copy from input cpt
         # copy_cpt = copy.deepcopy(factor.get_cpt(X))
-        copy_cpt = copy.deepcopy(factor)
-
+        # copy_cpt = copy.deepcopy(factor)
+        copy_cpt = factor
+        
         # Keep track of columns for later use 
         columns = list(copy_cpt.columns.values)
         columns.remove(X)
         columns.remove('p')
-
+        
         # Keep true and false values while removing the factor X
         true_values = copy_cpt[(copy_cpt[X] == True)].drop(X, axis=1)
         false_values = copy_cpt[(copy_cpt[X] == False)].drop(X, axis=1)
 
         # Take the sum of True and False values according to the other variables in the cpt
         summed_out_cpt = pd.concat([true_values, false_values]).groupby(columns)['p'].sum().reset_index()
-
+        
         return summed_out_cpt
     # def marginalize(self, factor, X) -> pd.DataFrame:
     #     """
@@ -257,51 +258,52 @@ class BNReasoner:
         int_graph = self.bn.get_interaction_graph()
         degree_ = dict((int_graph.degree()))
 
-        # # Get the intersection of vars and nodes in degree
-        degree = {}
-        for i in list(set(degree_.keys()) & set(vars)):
-            degree[i] = degree_[i]
+        while len(vars) > 0:
+            
+            # Get the intersection of vars and nodes in degree
+            degree = {}
+            for i in list(set(degree_.keys()) & set(vars)):
+                degree[i] = degree_[i]
 
-        # Sort dict by value (amount of degrees)
-        degree = dict(sorted(degree.items(), key=lambda x:x[1]))
+            # Sort dict by value (amount of degrees)
+            degree = dict(sorted(degree.items(), key=lambda x:x[1]))
 
-        # Order of elimination of X
-        ordering = []
+            # Order of elimination of X
+            ordering = []
 
-        for key in degree:
-            # Check neighbors
-            neighbors = int_graph.neighbors(key)
+            for key in degree:
+                # Check neighbors
+                neighbors = int_graph.neighbors(key)
 
-            # Connect neighbor nodes to each other
-            neighbor_edges = combinations(neighbors, 2)
+                # Connect neighbor nodes to each other
+                neighbor_edges = combinations(neighbors, 2)
 
-            # Add these new connections to the list of edges
-            for edge in neighbor_edges:
-                if int_graph.has_edge(edge[0], edge[1]) == False:
-                    int_graph.add_edge(edge[0], edge[1])
+                # Add these new connections to the list of edges
+                for edge in neighbor_edges:
+                    if int_graph.has_edge(edge[0], edge[1]) == False:
+                        int_graph.add_edge(edge[0], edge[1])
 
-            # Remove the node from graph
-            int_graph.remove_node(key)
-            ordering.append(key)
+                # Remove the node from graph
+                int_graph.remove_node(key)
+                ordering.append(key)
 
         return ordering
     
-    def elimination(self, set_of_Vars, *heuristic):
+
+    def elimination1(self, set_of_Vars, *heuristic):
         """
         :set_of_Vars: A set of variables X in the BN
         :returns a marginalized cpt in which a set of variables is eliminated:
         """
         # Copy to change current network 
-        self.elimination_bn = copy.deepcopy(self.bn)
 
-        # # Apply ordering is applicable 
-        # if heuristic:
-        #     ordered_vars = self.ordering(set_of_Vars, heuristic)
-        # else:
-        #     ordered_vars = list(set_of_Vars)
+        # Apply ordering is applicable
+        if heuristic == 'min_degree':
+            ordered_vars = self.ordering(set_of_Vars, 'min_degree')
+        else:
+            ordered_vars = self.ordering(set_of_Vars, 'min_fill')
 
-        ordered_vars = list(set_of_Vars)
-        
+        print(ordered_vars)
         old_marg_cpt = None
 
         # Eliminate every variable 
@@ -311,12 +313,12 @@ class BNReasoner:
                 list_factors = [old_marg_cpt]
             # Start with first node when variable is the first in the loop 
             else:
-                parent_cpt = copy.deepcopy(self.elimination_bn.get_cpt(var))
+                parent_cpt = copy.deepcopy(self.bn.get_cpt(var))
                 list_factors = [parent_cpt]
         
             # Combine all children-nodes from the variable
             for child in self.bn.get_children(var):
-                child_cpt = copy.deepcopy(self.elimination_bn.get_cpt(child))
+                child_cpt = copy.deepcopy(self.bn.get_cpt(child))
                 list_factors.append(child_cpt)
 
             # Take first node to multiply 
@@ -325,17 +327,70 @@ class BNReasoner:
             # Multiply all nodes with each other  
             while len(list_factors) > 0:
                 new_cpt = self.f_multiplication(new_cpt, list_factors.pop())
-
-            # Sum out the newly factor 
+            
+            # Sum out the newly factor
+            print(new_cpt)
+            print(var)
             marg_cpt = self.marginalize(new_cpt, var)
-
+            
             # Update variable cpt with new marginalized cpt 
-            self.elimination_bn.update_cpt(var, marg_cpt)
+            self.bn.update_cpt(var, marg_cpt)
             
             # Keep marginalized cpt for next multiplication  
             old_marg_cpt = marg_cpt
-
+        print(old_marg_cpt)
         return old_marg_cpt
+    # def elimination(self, set_of_Vars, *heuristic):
+    #     """
+    #     :set_of_Vars: A set of variables X in the BN
+    #     :returns a marginalized cpt in which a set of variables is eliminated:
+    #     """
+    #     # Copy to change current network 
+    #     self.elimination_bn = copy.deepcopy(self.bn)
+
+    #     # # Apply ordering is applicable
+    #     # if heuristic:
+    #     #     ordered_vars = self.ordering(set_of_Vars, heuristic)
+    #     # else:
+    #     #     ordered_vars = list(set_of_Vars)
+
+    #     ordered_vars = list(set_of_Vars)
+        
+    #     old_marg_cpt = None
+
+    #     # Eliminate every variable 
+    #     for var in ordered_vars:
+    #         # Check if variable is not the first in the loop 
+    #         if old_marg_cpt is pd.DataFrame():
+    #             list_factors = [old_marg_cpt]
+    #         # Start with first node when variable is the first in the loop 
+    #         else:
+    #             parent_cpt = copy.deepcopy(self.elimination_bn.get_cpt(var))
+    #             list_factors = [parent_cpt]
+        
+    #         # Combine all children-nodes from the variable
+    #         for child in self.bn.get_children(var):
+    #             child_cpt = copy.deepcopy(self.elimination_bn.get_cpt(child))
+    #             list_factors.append(child_cpt)
+
+    #         # Take first node to multiply 
+    #         new_cpt = list_factors.pop()
+
+    #         # Multiply all nodes with each other  
+    #         while len(list_factors) > 0:
+    #             new_cpt = self.f_multiplication(new_cpt, list_factors.pop())
+            
+    #         # Sum out the newly factor
+            
+    #         marg_cpt = self.marginalize(new_cpt, var)
+            
+    #         # Update variable cpt with new marginalized cpt 
+    #         self.elimination_bn.update_cpt(var, marg_cpt)
+            
+    #         # Keep marginalized cpt for next multiplication  
+    #         old_marg_cpt = marg_cpt
+
+    #     return old_marg_cpt
 
     def the_smallest(self, vars, graph):
         """
@@ -409,9 +464,8 @@ class BNReasoner:
         if heuristic == 'min_degree':
             return self.min_degree(set_of_Vars)
             
-        if heuristic == 'self.min_fill':
+        if heuristic == 'min_fill':
             return self.min_fill(set_of_Vars)
-
 
     def marg_dist(self, Q, e, heuristic):
         """
@@ -454,11 +508,11 @@ class BNReasoner:
         # Eliminate irrelevant factors of the query 
         # marginalized_cpt = self.elimination(irrelevant_factors, heuristic)
         marginalized_cpt = self.elimination(irrelevant_factors)
-        print(marginalized_cpt)
+        
         # Calculate true and false values of Q
         cpt = marginalized_cpt.groupby(Q)['p'].sum()
-        print(cpt)
-        prob_false = self.marge_bn.get_cpt['p' == False].div(evidence_factor)
+        
+        # prob_false = self.marge_bn.get_cpt['p' == False].div(evidence_factor)
         
         return
 
@@ -482,14 +536,14 @@ if __name__ == "__main__":
     # BN.pruning(variables, evidence)
     # BN.is_d_separated(X, Y, evidence)
     # BN.is_independent(X, Y, evidence)
-    # BN.marginalize(BN.bn, 'Sprinkler?')
+    # BN.marginalize(f, 'Rain?')
     # print(BN.max_out(BN.bn, 'Sprinkler?'))
     # BN.f_multiplication(f, g)
     # BN.min_degree({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # BN.min_fill({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # BN.ordering({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
-    # set_of_Vars = {'Slippery Road?', 'Rain?'}
-    # BN.elimination(set_of_Vars)
+    set_of_Vars = ['Wet Grass?', 'Slippery Road?', 'Rain?', 'Winter?']
+    BN.elimination1(set_of_Vars, 'min_fill')
     # BN.marg_dist(['Slippery Road?'], {'Winter?': True, 'Rain?': False}, "heuristic")
-    BN.marg_dist(['Rain?'], {'Winter?': True}, "heuristic")
+    # BN.marg_dist(['Rain?'], {'Winter?': True}, "heuristic")
 
