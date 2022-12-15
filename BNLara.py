@@ -144,9 +144,11 @@ class BNReasoner:
         :return: a marginalized CPT
         """
         # Get copy from input cpt
-        # copy_cpt = copy.deepcopy(factor.get_cpt(X))
-        copy_cpt = copy.deepcopy(factor)
-
+        copy_cpt = copy.deepcopy(factor.get_cpt(X))
+        print(factor)
+        # copy_cpt = copy.deepcopy(factor)
+        print(copy_cpt)
+    
         # Keep track of columns for later use 
         columns = list(copy_cpt.columns.values)
         columns.remove(X)
@@ -342,7 +344,7 @@ if __name__ == "__main__":
     # BN.pruning(variables, evidence)
     # BN.is_d_separated(X, Y, evidence)
     # BN.is_independent(X, Y, evidence)
-    # BN.marginalize(BN.bn, 'Sprinkler?')
+    BN.marginalize(BN.bn, 'Sprinkler?')
     # print(BN.max_out(BN.bn, 'Sprinkler?'))
     # BN.f_multiplication(f, g)
     # print(BN.min_degree())
