@@ -23,7 +23,7 @@
 
 <BIF VERSION="0.3">
 <NETWORK>
-    <NAME>Lecture Example2</NAME>
+    <NAME>Use Case Strict</NAME>
 
     <!-- Variables-->
     <VARIABLE TYPE="nature">
