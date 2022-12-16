@@ -5,6 +5,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 import pandas as pd
 from itertools import combinations
+from sklearn.preprocessing import minmax_scale
 
 class BNReasoner:
     def __init__(self, net: Union[str, BayesNet]):
@@ -147,7 +148,10 @@ class BNReasoner:
         
         # Keep track of columns for later use 
         columns = list(copy_cpt.columns.values)
-        columns.remove(X)
+        if X in columns:
+            columns.remove(X)
+        else:
+            return copy_cpt
         columns.remove('p')
         
         # Keep true and false values while removing the factor X
@@ -158,49 +162,45 @@ class BNReasoner:
         summed_out_cpt = pd.concat([true_values, false_values]).groupby(columns)['p'].sum().reset_index()
         
         return summed_out_cpt
-    # def marginalize(self, factor, X) -> pd.DataFrame:
-    #     """
-    #     Computes the CPT from factor in which X is summed-out.
-
-    #     :factor: factor from which to sum X out
-    #     :X: variable to sum out
-    #     :return: a marginalized CPT
-    #     """
-
-    #     # Get copy from input cpt
-    #     copy_cpt = copy.deepcopy(factor.get_cpt(X))
-
-    #     # Select all columns except the factor
-    #     columns = list(copy_cpt.columns.values)
-    #     columns.remove(X)
-    #     columns.remove('p')
-
-    #     # Create new df without the factor, add sum of factor to new df
-    #     summed_out_cpt = copy_cpt.groupby(columns).sum().reset_index().drop(X, axis=1)
-
-    #     return summed_out_cpt
 
     def max_out(self, factor, X) -> pd.DataFrame:
         """
         Computes the CPT in which X is maxed out.
         :factor: input CPT or other factor input
-        :X: variable to max out
+        :X: variables to max out
         :return: pd.DataFrame of a CPT with instantiation of X and maxed-out values
         """
         # Get copy of the original CPT
-        copy_cpt = copy.deepcopy(factor.get_cpt(X))
+        for i in X:
+            # Select all columns except X
+            columns = list(factor.columns.values)
+            columns.remove(i)
+            columns.remove('p')
+            factor['Value'] = ""
 
-        # Select all columns except X
-        columns = list(copy_cpt.columns.values)
-        columns.remove(X)
-        columns.remove('p')
+            # Keep true and false values while removing the factor X
+            true_values = factor[(factor[i] == True)] #.drop(i, axis=1)
+            true_values['Value'] = i + "=" + true_values[i].astype(str)
+            true_values.drop(i, axis=1)
+            print(true_values)
 
-        # Max out variable
-        max_cpt = copy_cpt.groupby(columns).max().reset_index()
-        # Remember the variable instantiation (tuples)
-        max_cpt['p'] = max_cpt[['p', X]].apply(tuple, axis=1)
-        # Remove the maxed-out variable X
-        max_cpt = max_cpt.drop(X, axis=1)
+            # true_values['p'] = true_values['p'].astype(str) + i + "=True"
+            false_values = factor[(factor[i] == False)]#.drop(i, axis=1)
+            false_values['Value'] = i + "=" + false_values[i].astype(str)
+            # false_values.drop(i, axis=1)
+            print(false_values)
+
+
+            # # Max out variable
+            # max_cpt = copy_cpt.groupby(columns).max().reset_index()
+            # # Remember the variable instantiation (tuples)
+            # max_cpt['p'] = max_cpt[['p', X]].apply(tuple, axis=1)
+            # # Remove the maxed-out variable X
+            # max_cpt = max_cpt.drop(X, axis=1)
+
+            # # Max out variable
+            print(columns)
+            max_cpt = pd.concat([true_values, false_values]).groupby(columns)['p'].max().reset_index()
 
         return max_cpt
 
@@ -252,9 +252,10 @@ class BNReasoner:
         # Create interaction graph
         int_graph = self.bn.get_interaction_graph()
         degree_ = dict((int_graph.degree()))
+        ordering = []
 
         while len(vars) > 0:
-            
+
             # Get the intersection of vars and nodes in degree
             degree = {}
             for i in list(set(degree_.keys()) & set(vars)):
@@ -263,9 +264,7 @@ class BNReasoner:
             # Sort dict by value (amount of degrees)
             degree = dict(sorted(degree.items(), key=lambda x:x[1]))
 
-            # Order of elimination of X
-            ordering = []
-
+            # Loop through every item in dict
             for key in degree:
                 # Check neighbors
                 neighbors = int_graph.neighbors(key)
@@ -279,13 +278,14 @@ class BNReasoner:
                         int_graph.add_edge(edge[0], edge[1])
 
                 # Remove the node from graph
+                vars.remove(key)
                 int_graph.remove_node(key)
                 ordering.append(key)
 
-        return ordering
+            # return the ordered variables
+            return ordering
     
-
-    def elimination1(self, set_of_Vars, *heuristic):
+    def elimination(self, set_of_Vars, *heuristic):
         """
         :set_of_Vars: A set of variables X in the BN
         :returns a marginalized cpt in which a set of variables is eliminated:
@@ -293,109 +293,71 @@ class BNReasoner:
         # Copy to change current network 
 
         # Apply ordering is applicable
-        if heuristic == 'min_degree':
-            ordered_vars = self.ordering(set_of_Vars, 'min_degree')
-        else:
-            ordered_vars = self.ordering(set_of_Vars, 'min_fill')
+        # if heuristic == 'min_degree':
+        #     ordered_vars = self.ordering(set_of_Vars, 'min_degree')
+        # else:
+        #     ordered_vars = self.ordering(set_of_Vars, 'min_fill')
 
-        print(ordered_vars)
         old_marg_cpt = None
-
+        ordered_vars = set_of_Vars
+        # print(ordered_vars)
         # Eliminate every variable 
         for var in ordered_vars:
+            
             # Check if variable is not the first in the loop 
-            if old_marg_cpt is pd.DataFrame():
+            if old_marg_cpt is not None:
                 list_factors = [old_marg_cpt]
+                
+                
+                # parent_cpt = copy.deepcopy(self.bn.get_cpt(var))
+                # list_factors.append(parent_cpt)
             # Start with first node when variable is the first in the loop 
             else:
-                parent_cpt = copy.deepcopy(self.bn.get_cpt(var))
+                parent_cpt = self.bn.get_cpt(var)
                 list_factors = [parent_cpt]
-        
+            
             # Combine all children-nodes from the variable
             for child in self.bn.get_children(var):
-                child_cpt = copy.deepcopy(self.bn.get_cpt(child))
+                child_cpt = self.bn.get_cpt(child)
                 list_factors.append(child_cpt)
-
-            # Take first node to multiply 
+            
+            # Take first node to multiply
             new_cpt = list_factors.pop()
-
+            length = len(list_factors)
+            
             # Multiply all nodes with each other  
             while len(list_factors) > 0:
                 new_cpt = self.f_multiplication(new_cpt, list_factors.pop())
-            
-            # Sum out the newly factor
-            print(new_cpt)
-            print(var)
-            marg_cpt = self.marginalize(new_cpt, var)
+        
+            if length > 0:
+                marg_cpt = self.marginalize(new_cpt, var)
+            else:
+                marg_cpt = new_cpt
             
             # Update variable cpt with new marginalized cpt 
-            self.bn.update_cpt(var, marg_cpt)
-            
-            # Keep marginalized cpt for next multiplication  
+            # self.bn.update_cpt(var, marg_cpt)
+
+            # Keep marginalized cpt for next multiplication
+            dict = self.bn.get_all_cpts()
+
+            for i in dict:
+                if var in dict[i]:
+                    dict[i] = dict[i].drop(columns=[var])
+            for i in dict:
+                self.bn.update_cpt(i, dict[i])
+
             old_marg_cpt = marg_cpt
-        print(old_marg_cpt)
+        
+        
         return old_marg_cpt
-    # def elimination(self, set_of_Vars, *heuristic):
-    #     """
-    #     :set_of_Vars: A set of variables X in the BN
-    #     :returns a marginalized cpt in which a set of variables is eliminated:
-    #     """
-    #     # Copy to change current network 
-    #     self.elimination_bn = copy.deepcopy(self.bn)
 
-    #     # # Apply ordering is applicable
-    #     # if heuristic:
-    #     #     ordered_vars = self.ordering(set_of_Vars, heuristic)
-    #     # else:
-    #     #     ordered_vars = list(set_of_Vars)
-
-    #     ordered_vars = list(set_of_Vars)
-        
-    #     old_marg_cpt = None
-
-    #     # Eliminate every variable 
-    #     for var in ordered_vars:
-    #         # Check if variable is not the first in the loop 
-    #         if old_marg_cpt is pd.DataFrame():
-    #             list_factors = [old_marg_cpt]
-    #         # Start with first node when variable is the first in the loop 
-    #         else:
-    #             parent_cpt = copy.deepcopy(self.elimination_bn.get_cpt(var))
-    #             list_factors = [parent_cpt]
-        
-    #         # Combine all children-nodes from the variable
-    #         for child in self.bn.get_children(var):
-    #             child_cpt = copy.deepcopy(self.elimination_bn.get_cpt(child))
-    #             list_factors.append(child_cpt)
-
-    #         # Take first node to multiply 
-    #         new_cpt = list_factors.pop()
-
-    #         # Multiply all nodes with each other  
-    #         while len(list_factors) > 0:
-    #             new_cpt = self.f_multiplication(new_cpt, list_factors.pop())
-            
-    #         # Sum out the newly factor
-            
-    #         marg_cpt = self.marginalize(new_cpt, var)
-            
-    #         # Update variable cpt with new marginalized cpt 
-    #         self.elimination_bn.update_cpt(var, marg_cpt)
-            
-    #         # Keep marginalized cpt for next multiplication  
-    #         old_marg_cpt = marg_cpt
-
-    #     return old_marg_cpt
-
-    def the_smallest(self, vars, graph):
+    def the_smallest(self, vars, graph) -> pd.DataFrame:
         """
-        :vars: set of variables
-        :graph: interaction graph to check on
-        :return: dictionary of sorted nodes (s-b) and dictionary of graphs
+        :vars: set of variables in a list
+        :return: dictionary of sorted nodes (small->large)
         """
         n_graph = graph
         new_edges = {}
-        saved_graph = {}
 
         for var in vars:
             new_edges[var] = 0
@@ -407,11 +369,11 @@ class BNReasoner:
                 if n_graph.has_edge(edge[0], edge[1]) == False:
                     n_graph.add_edge(edge[0], edge[1])
                     new_edges[var] += 1
-            saved_graph[var] = n_graph
             n_graph = graph
 
+        # Sort variables by the least amount of edges.
         smallest = dict(sorted(new_edges.items(), key=lambda x:x[1]))
-        return smallest, saved_graph
+        return smallest
 
     def min_fill(self, vars):
         """
@@ -437,15 +399,14 @@ class BNReasoner:
 
         while len(var_list) > 0:
             # Get the node and corresponding graph which creates the least amount of new edges
-            node, graph = self.the_smallest(var_list, int_graph)
+            node = self.the_smallest(var_list, int_graph)
 
             # Update graph and variable list
-            int_graph = graph[list(node.keys())[0]]
-            ordering.append(list(node.keys())[0])
-
-            # Delete node from variable list
+            int_graph.remove_node(list(node.keys())[0])
             var_list.remove(list(node.keys())[0])
 
+            # Add variable to the ordering
+            ordering.append(list(node.keys())[0])
         return ordering
 
     def ordering(self, set_of_Vars, heuristic):
@@ -460,7 +421,7 @@ class BNReasoner:
         if heuristic == 'min_fill':
             return self.min_fill(set_of_Vars)
 
-    def marg_dist(self, Q, e, heuristic):
+    def marg_dist(self, Q, e, *heuristic):
         """
         :Q: Query Variables, a list - ['C', 'D']
         :e: A dict of instances of variables - {'A': False}
@@ -471,45 +432,78 @@ class BNReasoner:
         in the Bayesian network X with Q ⊂ X but can also be Q = X. (2.5pts)
         """
         # Create a copy of the network
-        self.marge_bn = copy.deepcopy(self.bn)
-
+        # self.marge_bn = copy.deepcopy(self.bn)
+        prob_e = 1
         # Loop through the evidence and adjust its table
         for var, inst in e.items():
-            table = self.marge_bn.get_cpt(var)
+            table = self.bn.get_cpt(var)
             table = table[table[var] == inst]
-            self.marge_bn.update_cpt(var, table)
+            total_table = table[table[var]]
+            prob_e *= table['p'].iloc[0]
+            # self.bn.update_cpt(var, table)
+            # print(self.bn.get_cpt(var))
 
             # Also adjust the tables of the children
-            children = self.marge_bn.get_children(var)
+            children = self.bn.get_children(var)
             for child in children:
-                table_c = self.marge_bn.get_cpt(child)
+                table_c = self.bn.get_cpt(child)
                 table_c = table_c[table_c[var] == inst]
-                self.marge_bn.update_cpt(child, table_c)
 
+                # self.bn.update_cpt(child, table_c)
+        
         # joint_marg = set(Q) | set(list(e.keys()))
+        # print(joint_marg)
+
         # Remove elements that should not be eleminated (Q)
-        irrelevant_factors = set(self.marge_bn.get_all_variables())
+        irrelevant_factors = self.bn.get_all_variables()
+        
         for i in Q:
             irrelevant_factors.remove(i)
-
-        # self.elimination(joint_marg, heuristic)
-
-        # Pick heuristic 
-        heuristic = 'self.min_fill'
         
+        # Pick heuristic 
+        heuristic = 'min_fill'
+        
+        # irrelevant_factors = ['Wet Grass?']
         # Eliminate irrelevant factors of the query 
         # marginalized_cpt = self.elimination(irrelevant_factors, heuristic)
+        
         marginalized_cpt = self.elimination(irrelevant_factors)
-        
+        # print(marginalized_cpt)
+        exit()
+        # print(self.bn.get_cpt('Winter?'))
+        print(marginalized_cpt)
+        marginalized_cpt['p'] = minmax_scale(marginalized_cpt['p'])
+        print(marginalized_cpt)
+        print(prob_e)
         # Calculate true and false values of Q
-        cpt = marginalized_cpt.groupby(Q)['p'].sum()
-        
-        # prob_false = self.marge_bn.get_cpt['p' == False].div(evidence_factor)
-        
+        true_Q = marginalized_cpt.iloc[-1]['p']
+        prob_true = true_Q / prob_e
+        print(prob_true)
+        false_Q = marginalized_cpt['p'].sum() - true_Q
+        prob_false = false_Q / prob_e
+        print(prob_false)
         return
 
     def map(self, Q, e):
-        return
+        """
+        :Q: A list of Variables
+        :e: Evidence, variables with instantiation - {'A' : True}
+        :return: The maximum a-posteriory instantiation and the value of the query variables Q
+        """
+        # Get the variables of the network
+        all_vars = self.bn.get_all_variables()
+        # Eliminate all variables that are not in the query or evidence
+        eliminate = [i for i in all_vars if (i not in Q) and (i not in list(e.keys()))]
+        joint_dist = self.elimination1(eliminate)
+
+        # Get the maximum value of the instantiation
+        for elem in list(e.keys()):
+            print(elem)
+            joint_dist = joint_dist[joint_dist[elem] == e[elem]]
+
+        # Get the row of the max value
+        # [Gets row and column name[gets the row number[gets the maximum value]]]
+        return joint_dist.loc[joint_dist.iloc[joint_dist.argmax()]]
 
 if __name__ == "__main__":
     # Create test
@@ -534,7 +528,8 @@ if __name__ == "__main__":
     # BN.min_degree({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # BN.min_fill({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
     # BN.ordering({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
-    set_of_Vars = ['Wet Grass?', 'Slippery Road?', 'Rain?', 'Winter?']
-    BN.elimination1(set_of_Vars, 'min_fill')
-    # BN.marg_dist(['Slippery Road?'], {'Winter?': True, 'Rain?': False}, "heuristic")
+    # set_of_Vars = ['Wet Grass?', 'Slippery Road?', 'Rain?', 'Winter?']
+    set_of_Vars = ['Winter?']
+    # BN.elimination(set_of_Vars)
+    BN.marg_dist(set_of_Vars, {'Winter?': True})
     # BN.marg_dist(['Rain?'], {'Winter?': True}, "heuristic")
