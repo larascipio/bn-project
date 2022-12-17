@@ -143,9 +143,7 @@ class BNReasoner:
         """
         # Get copy from input cpt
         # copy_cpt = copy.deepcopy(factor.get_cpt(X))
-        # copy_cpt = copy.deepcopy(factor)
         copy_cpt = factor
-        
         # Keep track of columns for later use 
         columns = list(copy_cpt.columns.values)
         if X in columns:
@@ -153,15 +151,32 @@ class BNReasoner:
         else:
             return copy_cpt
         columns.remove('p')
-        
+        print(columns)
         # Keep true and false values while removing the factor X
-        true_values = copy_cpt[(copy_cpt[X] == True)].drop(X, axis=1)
-        false_values = copy_cpt[(copy_cpt[X] == False)].drop(X, axis=1)
-
+        true_values = copy_cpt[(copy_cpt[X] == True)].drop(X, axis=1).reset_index()
+        false_values1 = copy_cpt[(copy_cpt[X] == False)].drop(X, axis=1)
+        false_values = copy_cpt[(copy_cpt[X] == False)].drop(X, axis=1).reset_index()
+        print(false_values1)
+        false_values = false_values.rename(columns = {'p':'false_p'})
+        df4 = true_values['p']
+        df5 = false_values['false_p']
+        df6 = df4 + df5
+        print(df6)
+        print(f"true: {true_values}")
+        print(f"false: {false_values}")
+    
         # Take the sum of True and False values according to the other variables in the cpt
-        summed_out_cpt = pd.concat([true_values, false_values]).groupby(columns)['p'].sum().reset_index()
         
-        return summed_out_cpt
+        # summed_out_cpt = pd.concat([true_values, false_values]).groupby(columns)['p'].sum()
+        # total = false_values['p'] + true_values['p']
+        # print(total)
+        # copy_cpt['p'] = total
+        # print(copy_cpt)
+        # true_values['sum'] = true_values['p'] + false_values['p']
+        # print(true_values)
+        # summed_out_cpt = copy_cpt.groupby(columns).sum().reset_index().drop(X, axis=1)
+        
+        return total
 
     def max_out(self, factor, X) -> pd.DataFrame:
         """
@@ -300,14 +315,13 @@ class BNReasoner:
 
         old_marg_cpt = None
         ordered_vars = set_of_Vars
-        # print(ordered_vars)
+        
         # Eliminate every variable 
         for var in ordered_vars:
-            
+            print(f'var die eruit gaat:{var}')
             # Check if variable is not the first in the loop 
             if old_marg_cpt is not None:
                 list_factors = [old_marg_cpt]
-                
                 
                 # parent_cpt = copy.deepcopy(self.bn.get_cpt(var))
                 # list_factors.append(parent_cpt)
@@ -320,7 +334,7 @@ class BNReasoner:
             for child in self.bn.get_children(var):
                 child_cpt = self.bn.get_cpt(child)
                 list_factors.append(child_cpt)
-            
+            # print(f'list factors:{list_factors}')
             # Take first node to multiply
             new_cpt = list_factors.pop()
             length = len(list_factors)
@@ -328,12 +342,12 @@ class BNReasoner:
             # Multiply all nodes with each other  
             while len(list_factors) > 0:
                 new_cpt = self.f_multiplication(new_cpt, list_factors.pop())
-        
-            if length > 0:
-                marg_cpt = self.marginalize(new_cpt, var)
-            else:
-                marg_cpt = new_cpt
+            # print(f'new mulitplied factor:{new_cpt}')
             
+            # print(new_cpt)
+            marg_cpt = self.marginalize(new_cpt, var)
+            # print(new_cpt)
+            # print(f'new marginalized factor{marg_cpt}')
             # Update variable cpt with new marginalized cpt 
             # self.bn.update_cpt(var, marg_cpt)
 
