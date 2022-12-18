@@ -3,7 +3,7 @@
 ### 
 ### Knowledge Representation: Bayesian Network Project 2 
 ### 
-### Contains several functions that analyse bayesian networks, with use of Bayesnet.py.
+### Used for reasoning tasks in a Bayesian network, contains methods that a BayesianNet object.
 ### 
 
 from typing import Union
@@ -59,7 +59,7 @@ class BNReasoner:
                     self.children = True
             if not self.children:
                 break
-        print(self.get_edges(self.pruned_bn))
+        
         return self.pruned_bn
 
     def find_all_paths(self, bn, start, path) -> None:
@@ -186,6 +186,7 @@ class BNReasoner:
             max_cpt = max_cpt.drop(X, axis=1)
 
         return max_cpt
+    
     def f_multiplication(self, f, g) -> pd.DataFrame:
         """
         Computes the multiplied factor h=fg, given two factors f and g.
@@ -223,6 +224,7 @@ class BNReasoner:
                     new["p"] = f["p"].iloc[i] * g["p"].iloc[j]
                     h_Z = h_Z.append(new, ignore_index=True)
         return h_Z
+    
     def min_degree(self, vars:str):
         """
         :vars: list of variables of graph which needs sorting
@@ -265,6 +267,7 @@ class BNReasoner:
 
             # return the ordered variables
             return ordering
+    
     def elimination(self, set_of_vars, *heuristic) -> pd.DataFrame:
         """
         :set_of_vars: list of variables to be eliminated
@@ -321,6 +324,7 @@ class BNReasoner:
                 
                 
         return n_f
+    
     def the_smallest(self, vars, graph) -> pd.DataFrame:
         """
         :vars: set of variables in a list
@@ -344,7 +348,7 @@ class BNReasoner:
         # Sort variables by the least amount of edges.
         smallest = dict(sorted(new_edges.items(), key=lambda x:x[1]))
         return smallest
-
+    
     def min_fill(self, vars):
         """
         Queue variable which deletion would add the fewest new edges to
@@ -378,7 +382,7 @@ class BNReasoner:
             # Add variable to the ordering
             ordering.append(list(node.keys())[0])
         return ordering
-
+    
     def ordering(self, set_of_Vars, heuristic):
         """
         (Hint: you get the interaction graph ”for free” from the BayesNet class.))
@@ -390,7 +394,7 @@ class BNReasoner:
 
         if heuristic == 'min_fill':
             return self.min_fill(set_of_Vars)
-
+    
     def marg_dist(self, Q, e, *heuristic):
         """
         :Q: Query Variables, a list - ['C', 'D']
@@ -401,28 +405,23 @@ class BNReasoner:
         marginal distribution P(Q|e). Note that Q is a subset of the variables
         in the Bayesian network X with Q ⊂ X but can also be Q = X. (2.5pts)
         """
-        # Create a copy of the network
-        # self.marge_bn = copy.deepcopy(self.bn)
-        prob_e = 1
-        # Loop through the evidence and adjust its table
-        # for var, inst in e.items():
-        #     table = self.bn.get_cpt(var)
-        #     table = table[table[var] == inst]
-        #     total_table = table[table[var]]
-        #     prob_e *= table['p'].iloc[0]
-        #     # self.bn.update_cpt(var, table)
-        #     # print(self.bn.get_cpt(var))
-
-        #     # Also adjust the tables of the children
-        #     children = self.bn.get_children(var)
-        #     for child in children:
-        #         table_c = self.bn.get_cpt(child)
-        #         table_c = table_c[table_c[var] == inst]
-
-        #         self.bn.update_cpt(child, table_c)
         
-        # joint_marg = set(Q) | set(list(e.keys()))
-        # print(joint_marg)
+        # Loop through the evidence and adjust its table
+        for var, inst in e.items():
+            table = self.bn.get_cpt(var)
+            table = table[table[var] == inst]
+            total_table = table[table[var]]
+            prob_e *= table['p'].iloc[0]
+            self.bn.update_cpt(var, table)
+            print(self.bn.get_cpt(var))
+
+            # Also adjust the tables of the children
+            children = self.bn.get_children(var)
+            for child in children:
+                table_c = self.bn.get_cpt(child)
+                table_c = table_c[table_c[var] == inst]
+
+                self.bn.update_cpt(child, table_c)
 
         # Remove elements that should not be eleminated (Q)
         irrelevant_factors = self.bn.get_all_variables()
@@ -430,30 +429,14 @@ class BNReasoner:
         for i in Q:
             irrelevant_factors.remove(i)
         print(irrelevant_factors)
+        
         # Pick heuristic 
         heuristic = 'min_fill'
         
-        # irrelevant_factors = ['Wet Grass?']
-        # Eliminate irrelevant factors of the query 
-        # marginalized_cpt = self.elimination(irrelevant_factors, heuristic)
-        print(irrelevant_factors)
         marginalized_cpt = self.elimination(irrelevant_factors)
-        print(marginalized_cpt)
-        exit()
-        # print(self.bn.get_cpt('Winter?'))
-        print(marginalized_cpt)
-        marginalized_cpt['p'] = minmax_scale(marginalized_cpt['p'])
-        print(marginalized_cpt)
-        print(prob_e)
-        # Calculate true and false values of Q
-        true_Q = marginalized_cpt.iloc[-1]['p']
-        prob_true = true_Q / prob_e
-        print(prob_true)
-        false_Q = marginalized_cpt['p'].sum() - true_Q
-        prob_false = false_Q / prob_e
-        print(prob_false)
-        return
 
+        return
+    
     def map(self, Q, e):
         """
         :Q: A list of Variables
