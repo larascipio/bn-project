@@ -1,3 +1,11 @@
+### 
+### BNReasoner.py
+### 
+### Knowledge Representation: Bayesian Network Project 2 
+### 
+### Contains several functions that analyse bayesian networks, with use of Bayesnet.py.
+### 
+
 from typing import Union
 from BayesNet import BayesNet
 import copy
@@ -22,8 +30,8 @@ class BNReasoner:
 
         self.paths = [[]]
 
-    def get_structure(self, bn):
-        return bn.draw_structure()
+    def print_structure(self, bn):
+        print(bn.draw_structure())
 
     def get_edges(self, bn):
         return bn.structure.edges
@@ -35,7 +43,7 @@ class BNReasoner:
         self.pruned_bn = copy.deepcopy(self.bn)
         self.variables = variables.union(evidence)
         self.evidence = evidence
-
+        
         # Step 1: delete outgoing edges
         for v in self.evidence:
             children = self.pruned_bn.get_children(v)
@@ -51,6 +59,7 @@ class BNReasoner:
                     self.children = True
             if not self.children:
                 break
+        print(self.get_edges(self.pruned_bn))
         return self.pruned_bn
 
     def find_all_paths(self, bn, start, path) -> None:
@@ -134,49 +143,27 @@ class BNReasoner:
         print(f'{X} is not independent from {Y} given {evidence}')
         return False
 
-    def marginalize(self, factor, X) -> pd.DataFrame:
+    def marginalize(self, f, var):
         """
-        Computes the CPT from factor in which X is summed-out.
-        :factor: factor from which to sum X out
-        :X: variable to sum out
-        :return: a marginalized CPT
+        Given a factor and a variable X, compute the CPT in which X is summed-out
+        :return A cpt with variables in ordering summed out
         """
-        # Get copy from input cpt
-        # copy_cpt = copy.deepcopy(factor.get_cpt(X))
-        copy_cpt = factor
-        # Keep track of columns for later use 
-        columns = list(copy_cpt.columns.values)
-        if X in columns:
-            columns.remove(X)
-        else:
-            return copy_cpt
+        # Delete columns with variable to be summed out
+        del f[var]
+        
+        # Find other variables that are in the table 
+        columns = list(f.columns)
         columns.remove('p')
-        print(columns)
-        # Keep true and false values while removing the factor X
-        true_values = copy_cpt[(copy_cpt[X] == True)].drop(X, axis=1).reset_index()
-        false_values1 = copy_cpt[(copy_cpt[X] == False)].drop(X, axis=1)
-        false_values = copy_cpt[(copy_cpt[X] == False)].drop(X, axis=1).reset_index()
-        print(false_values1)
-        false_values = false_values.rename(columns = {'p':'false_p'})
-        df4 = true_values['p']
-        df5 = false_values['false_p']
-        df6 = df4 + df5
-        print(df6)
-        print(f"true: {true_values}")
-        print(f"false: {false_values}")
-    
-        # Take the sum of True and False values according to the other variables in the cpt
         
-        # summed_out_cpt = pd.concat([true_values, false_values]).groupby(columns)['p'].sum()
-        # total = false_values['p'] + true_values['p']
-        # print(total)
-        # copy_cpt['p'] = total
-        # print(copy_cpt)
-        # true_values['sum'] = true_values['p'] + false_values['p']
-        # print(true_values)
-        # summed_out_cpt = copy_cpt.groupby(columns).sum().reset_index().drop(X, axis=1)
+        # If only one variable left, return the summed probability
+        if len(columns) == 0:
+            return f['p'].sum()
         
-        return total
+        # Take the sum of variables with the same truth values
+        summed_out_cpt = f.groupby(columns).aggregate({'p': 'sum'})
+        summed_out_cpt.reset_index(inplace=True)
+        
+        return summed_out_cpt
 
     def max_out(self, factor, X) -> pd.DataFrame:
         """
@@ -185,40 +172,20 @@ class BNReasoner:
         :X: variables to max out
         :return: pd.DataFrame of a CPT with instantiation of X and maxed-out values
         """
-        # Get copy of the original CPT
+        # Loop through every variable to max out
         for i in X:
+            print(factor)
             # Select all columns except X
             columns = list(factor.columns.values)
-            columns.remove(i)
-            columns.remove('p')
-            factor['Value'] = ""
-
-            # Keep true and false values while removing the factor X
-            true_values = factor[(factor[i] == True)] #.drop(i, axis=1)
-            true_values['Value'] = i + "=" + true_values[i].astype(str)
-            true_values.drop(i, axis=1)
-            print(true_values)
-
-            # true_values['p'] = true_values['p'].astype(str) + i + "=True"
-            false_values = factor[(factor[i] == False)]#.drop(i, axis=1)
-            false_values['Value'] = i + "=" + false_values[i].astype(str)
-            # false_values.drop(i, axis=1)
-            print(false_values)
-
-
-            # # Max out variable
-            # max_cpt = copy_cpt.groupby(columns).max().reset_index()
-            # # Remember the variable instantiation (tuples)
-            # max_cpt['p'] = max_cpt[['p', X]].apply(tuple, axis=1)
-            # # Remove the maxed-out variable X
-            # max_cpt = max_cpt.drop(X, axis=1)
-
-            # # Max out variable
             print(columns)
-            max_cpt = pd.concat([true_values, false_values]).groupby(columns)['p'].max().reset_index()
+            # Max out variable
+            max_cpt = factor.groupby(columns).max().reset_index()
+            # Remember the variable instantiation (tuples)
+            max_cpt['p'] = max_cpt[['p', X]].apply(tuple, axis=1)
+            # Remove the maxed-out variable X
+            max_cpt = max_cpt.drop(X, axis=1)
 
         return max_cpt
-
     def f_multiplication(self, f, g) -> pd.DataFrame:
         """
         Computes the multiplied factor h=fg, given two factors f and g.
@@ -256,7 +223,6 @@ class BNReasoner:
                     new["p"] = f["p"].iloc[i] * g["p"].iloc[j]
                     h_Z = h_Z.append(new, ignore_index=True)
         return h_Z
-
     def min_degree(self, vars:str):
         """
         :vars: list of variables of graph which needs sorting
@@ -299,72 +265,62 @@ class BNReasoner:
 
             # return the ordered variables
             return ordering
-    
-    def elimination(self, set_of_Vars, *heuristic):
+    def elimination(self, set_of_vars, *heuristic) -> pd.DataFrame:
         """
-        :set_of_Vars: A set of variables X in the BN
-        :returns a marginalized cpt in which a set of variables is eliminated:
+        :set_of_vars: list of variables to be eliminated
+        :*heuristic: 'min_fil' or 'min_degree'
+        :returns: a cpt out of which the set_of_vars is summed out.
         """
-        # Copy to change current network 
 
-        # Apply ordering is applicable
-        # if heuristic == 'min_degree':
-        #     ordered_vars = self.ordering(set_of_Vars, 'min_degree')
-        # else:
-        #     ordered_vars = self.ordering(set_of_Vars, 'min_fill')
+        # Get all the tables
+        cpts = self.bn.get_all_cpts()
 
-        old_marg_cpt = None
-        ordered_vars = set_of_Vars
-        
-        # Eliminate every variable 
-        for var in ordered_vars:
-            print(f'var die eruit gaat:{var}')
-            # Check if variable is not the first in the loop 
-            if old_marg_cpt is not None:
-                list_factors = [old_marg_cpt]
+        # Order the variables
+        # self.ordered_vars(set_of_vars)
+
+        end_cpt = {}
+        dependency = {}
+
+        # Loop through the correct order of variables:
+        for i in set_of_vars:
+            print(i)
+            # List of cpts to multiply
+            multiply = []
+            print("HUIDIGE end_cpt\n", end_cpt)
+            if i in list(end_cpt.keys()):
+                multiply.append(end_cpt)
+            
+            for cpt in cpts:
+                if i in cpts[cpt]:
+                    multiply.append(cpts[cpt])
+
+            print(multiply)
+            for elem in cpts.items():
+                print(cpts.items())
+                if elem in multiply:
+                    print(elem)
+
+            print("list of multiplications\n", multiply)
+            if len(multiply) > 1:
+                result = multiply.pop()
+                print(result)
+                for m in multiply:
+                    print(m)
+                    result = self.f_multiplication(result, m)
+            elif len(multiply) == 1:
+                result = multiply[0]
+            print(result)
+
+            # Marginalize the variable
+            n_f = self.marginalize(result, i)
+            print(n_f)
+            
+            # Multiply the factor to the existing factor
+            if len(end_cpt) == 0:
+                end_cpt = n_f
                 
-                # parent_cpt = copy.deepcopy(self.bn.get_cpt(var))
-                # list_factors.append(parent_cpt)
-            # Start with first node when variable is the first in the loop 
-            else:
-                parent_cpt = self.bn.get_cpt(var)
-                list_factors = [parent_cpt]
-            
-            # Combine all children-nodes from the variable
-            for child in self.bn.get_children(var):
-                child_cpt = self.bn.get_cpt(child)
-                list_factors.append(child_cpt)
-            # print(f'list factors:{list_factors}')
-            # Take first node to multiply
-            new_cpt = list_factors.pop()
-            length = len(list_factors)
-            
-            # Multiply all nodes with each other  
-            while len(list_factors) > 0:
-                new_cpt = self.f_multiplication(new_cpt, list_factors.pop())
-            # print(f'new mulitplied factor:{new_cpt}')
-            
-            # print(new_cpt)
-            marg_cpt = self.marginalize(new_cpt, var)
-            # print(new_cpt)
-            # print(f'new marginalized factor{marg_cpt}')
-            # Update variable cpt with new marginalized cpt 
-            # self.bn.update_cpt(var, marg_cpt)
-
-            # Keep marginalized cpt for next multiplication
-            dict = self.bn.get_all_cpts()
-
-            for i in dict:
-                if var in dict[i]:
-                    dict[i] = dict[i].drop(columns=[var])
-            for i in dict:
-                self.bn.update_cpt(i, dict[i])
-
-            old_marg_cpt = marg_cpt
-        
-        
-        return old_marg_cpt
-
+                
+        return n_f
     def the_smallest(self, vars, graph) -> pd.DataFrame:
         """
         :vars: set of variables in a list
@@ -431,7 +387,7 @@ class BNReasoner:
         """
         if heuristic == 'min_degree':
             return self.min_degree(set_of_Vars)
-            
+
         if heuristic == 'min_fill':
             return self.min_fill(set_of_Vars)
 
@@ -449,21 +405,21 @@ class BNReasoner:
         # self.marge_bn = copy.deepcopy(self.bn)
         prob_e = 1
         # Loop through the evidence and adjust its table
-        for var, inst in e.items():
-            table = self.bn.get_cpt(var)
-            table = table[table[var] == inst]
-            total_table = table[table[var]]
-            prob_e *= table['p'].iloc[0]
-            # self.bn.update_cpt(var, table)
-            # print(self.bn.get_cpt(var))
+        # for var, inst in e.items():
+        #     table = self.bn.get_cpt(var)
+        #     table = table[table[var] == inst]
+        #     total_table = table[table[var]]
+        #     prob_e *= table['p'].iloc[0]
+        #     # self.bn.update_cpt(var, table)
+        #     # print(self.bn.get_cpt(var))
 
-            # Also adjust the tables of the children
-            children = self.bn.get_children(var)
-            for child in children:
-                table_c = self.bn.get_cpt(child)
-                table_c = table_c[table_c[var] == inst]
+        #     # Also adjust the tables of the children
+        #     children = self.bn.get_children(var)
+        #     for child in children:
+        #         table_c = self.bn.get_cpt(child)
+        #         table_c = table_c[table_c[var] == inst]
 
-                # self.bn.update_cpt(child, table_c)
+        #         self.bn.update_cpt(child, table_c)
         
         # joint_marg = set(Q) | set(list(e.keys()))
         # print(joint_marg)
@@ -473,16 +429,16 @@ class BNReasoner:
         
         for i in Q:
             irrelevant_factors.remove(i)
-        
+        print(irrelevant_factors)
         # Pick heuristic 
         heuristic = 'min_fill'
         
         # irrelevant_factors = ['Wet Grass?']
         # Eliminate irrelevant factors of the query 
         # marginalized_cpt = self.elimination(irrelevant_factors, heuristic)
-        
+        print(irrelevant_factors)
         marginalized_cpt = self.elimination(irrelevant_factors)
-        # print(marginalized_cpt)
+        print(marginalized_cpt)
         exit()
         # print(self.bn.get_cpt('Winter?'))
         print(marginalized_cpt)
@@ -520,30 +476,64 @@ class BNReasoner:
         return joint_dist.loc[joint_dist.iloc[joint_dist.argmax()]]
 
 if __name__ == "__main__":
-    # Create test
+    # Create BN graph 
     test_file = 'testing/lecture_example.BIFXML'
     BN = BNReasoner(test_file)
-    # BN.get_structure()
 
-    # Variables for testing
-    X = {'Winter?'}
-    Y = {'Winter?', 'Rain?'}
-    evidence = {}
-    f = BN.bn.get_cpt('Winter?')
+    #### TESTING FUNCTIONS ####
+    ## Pruning
+    variables = {'Winter?', 'Rain?', 'Wet Grass?'}
+    evidence = {'Rain?'}
+    pruned_bn = BN.pruning(variables, evidence)
+
+    ## D-separation
+    # Not D-separated
+    X_1 = {'Winter?'}
+    Y_1 = {'Winter?', 'Rain?'}
+    evidence_1 = {'Slippery Road?'}
+    # BN.is_d_separated(X_1, Y_1, evidence_1)
+
+    # D-separated (is also printed through independence)
+    X_2 = {'Wet Grass?'}
+    Y_2 = {'Slippery Road?'}
+    evidence_2 = {'Rain?'}
+    # BN.is_d_separated(X_2, Y_2, evidence_2)
+    
+    ## Independence
+    # Independent 
+    BN.is_independent(X_1, Y_1, evidence_1)
+    # Not independent 
+    BN.is_independent(X_2, Y_2, evidence_2)
+    print()
+
+    ## Marginalization 
+    f = BN.bn.get_cpt('Sprinkler?')
+    variable_f = 'Sprinkler'
+    print(f'CPT of {variable_f} before marginalizing {variable_f}:\n{f}')
+    print('CPT after marginalizing:')
+    print(BN.marginalize(f, 'Sprinkler?'))
+    print()
+
+    ## Maxing out
+    cpt = BN.bn.get_cpt('Rain?')
+    print(BN.max_out(cpt, 'Rain?'))
+
+    # # Multiplication
     g = BN.bn.get_cpt('Rain?')
+    variable_g = 'Rain'
+    multiplied = BN.f_multiplication(f, g)
+    print(f'Multiplication of {variable_f} and {variable_g}:\n{multiplied}')
+    print()
 
-    # Functions
-    # BN.pruning(variables, evidence)
-    # BN.is_d_separated(X, Y, evidence)
-    # BN.is_independent(X, Y, evidence)
-    # BN.marginalize(f, 'Rain?')
-    # print(BN.max_out(BN.bn, 'Sprinkler?'))
-    # BN.f_multiplication(f, g)
-    # BN.min_degree({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
-    # BN.min_fill({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
-    # BN.ordering({'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'})
-    # set_of_Vars = ['Wet Grass?', 'Slippery Road?', 'Rain?', 'Winter?']
-    set_of_Vars = ['Winter?']
-    # BN.elimination(set_of_Vars)
-    BN.marg_dist(set_of_Vars, {'Winter?': True})
-    # BN.marg_dist(['Rain?'], {'Winter?': True}, "heuristic")
+    ## Ordering with heuristics
+    set_of_var = {'Winter?', 'Rain?', 'Wet Grass?', 'Sprinkler?', 'Slippery Road?'}
+    # Min Degree Order
+    ordered_list = BN.ordering(set_of_var, 'min_degree')
+    print(f'List ordered with Min Degree heuristic:\n:{ordered_list}')
+    # Min Fill Order
+    ordered_list = BN.ordering(set_of_var, 'min_fill')
+    print(f'List ordered with Min Fill heuristic:\n:{ordered_list}')
+
+    ## Elimination 
+    set_of_Vars = ['Sprinkler?','Rain?', 'Winter?']
+    # print(BN.elimination(set_of_Vars))
